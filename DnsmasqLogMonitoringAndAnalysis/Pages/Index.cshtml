@@ -1,0 +1,256 @@
+﻿@page
+@model IndexModel
+@{
+    ViewBag.Title = "Viewer";
+
+    var viewModel = new
+    {
+        DomainName = "lan",
+        HostnameResolveUrl = "/api/Resolve/Hostname"
+    };
+}
+
+<div class="site-width"
+     ng-controller="NetworkController"
+     data-model="@Newtonsoft.Json.JsonConvert.SerializeObject(viewModel)">
+    <div class="content-wrapper container-fluid dnsmasq">
+        <h3>
+            Dnsmasq Log Monitoring And Analysis
+            <mark ng-show="dnsmasq.dataOptions.pause"> pausing...</mark>
+            <span class="pull-right">
+                <a ng-click="dnsmasq.dataOptions.pause = !dnsmasq.dataOptions.pause"><span class="glyphicon" ng-class="dnsmasq.dataOptions.pause ? 'glyphicon-play' : 'glyphicon-pause'" aria-hidden="true"></span></a>
+                <a ng-click="dnsmasq.dataOptions.settings = !dnsmasq.dataOptions.settings"><span class="glyphicon glyphicon-cog" aria-hidden="true"></span></a>
+                <span title="Start time" class="glyphicon glyphicon-time" aria-hidden="true"></span>: <small><span title="{{dnsmasq.startTime}}" am-time-ago="dnsmasq.startTime"></span></small>
+            </span>
+        </h3>
+
+        <div class="row" ng-show="dnsmasq.dataOptions.settings">
+            <div class="col-xs-12">
+                <fieldset>
+                    <legend><span class="glyphicon glyphicon-cog" aria-hidden="true"></span> Settings</legend>
+                    <div>Raw Data Line Limit: <input ng-model="dnsmasq.dataOptions.limit" /></div>
+                    <div>Local Domain Name: <input ng-model="DomainName" /></div>
+                    <div>IP Address Resolver Url: <input ng-model="HostnameResolveUrl" /></div>
+                </fieldset>
+            </div>
+
+            <div class="clearfix"></div>
+
+            <hr />
+        </div>
+
+        <div class="row">
+            <div class="col-xs-12">
+                <table class="table table-bordered">
+                    <caption>
+                        <a ng-click="dnsmasq.dataOptions.hidden = !dnsmasq.dataOptions.hidden"><span class="glyphicon" ng-class="dnsmasq.dataOptions.hidden ? 'glyphicon-triangle-right' : 'glyphicon-triangle-bottom'" aria-hidden="true"></span></a>
+                        Raw Data
+                        <span class="pull-right">Lines: <span ng-bind="dnsmasq.data | keylength | number"></span></span>
+                    </caption>
+                    <thead ng-hide="dnsmasq.dataOptions.hidden">
+                        <tr>
+                            <th>Time</th>
+                            <th>Logger</th>
+                            <th colspan="4">Message</th>
+                        </tr>
+                    </thead>
+                    <tbody ng-hide="dnsmasq.dataOptions.hidden">
+                        <tr ng-repeat="row in dnsmasq.data | orderBy:'+':true" class="animate-row">
+                            <td title="{{row.time}}" am-time-ago="row.time"></td>
+                            <td ng-bind="row.logger"></td>
+                            <td ng-bind="row.messageSplits.length == 4 ? row.messageSplits[0] : row.message" colspan="{{row.messageSplits.length == 4 ? 0 : 4}}"></td>
+                            <td ng-bind="row.messageSplits[1]" ng-hide="row.messageSplits.length != 4"></td>
+                            <td ng-bind="row.messageSplits[2]" ng-hide="row.messageSplits.length != 4"></td>
+                            <td ng-bind="row.messageSplits[3]" ng-hide="row.messageSplits.length != 4"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="clearfix"></div>
+
+        <div class="row">
+            <div class="col-xs-12 col-md-6">
+                <table class="table table-bordered">
+                    <caption>
+                        <a ng-click="dnsmasq.domainsOptions.hidden = !dnsmasq.domainsOptions.hidden"><span class="glyphicon" ng-class="dnsmasq.domainsOptions.hidden ? 'glyphicon-triangle-right' : 'glyphicon-triangle-bottom'" aria-hidden="true"></span></a>
+                        Domains
+                        <span class="pull-right">Nodes: <span ng-bind="dnsmasq.domains | keylength | number"></span></span>
+                    </caption>
+                    <thead ng-hide="dnsmasq.domainsOptions.hidden">
+                        <tr>
+                            <th ng-click="applySort(dnsmasq.domainsOptions, 'key')">Top Domains<a ng-hide="dnsmasq.domainsOptions.orderBy != 'key'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.domainsOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                            <th ng-click="applySort(dnsmasq.domainsOptions, 'totalRequests')">Requests<a ng-hide="dnsmasq.domainsOptions.orderBy != 'totalRequests'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.domainsOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                            <th ng-click="applySort(dnsmasq.domainsOptions, 'lastRequestTime')">Last Time<a ng-hide="dnsmasq.domainsOptions.orderBy != 'lastRequestTime'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.domainsOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                        </tr>
+                    </thead>
+                    <tbody ng-hide="dnsmasq.domainsOptions.hidden">
+                        <tr ng-repeat-start="domain in dnsmasq.domains | orderBy:dnsmasq.domainsOptions.orderBy:dnsmasq.domainsOptions.orderReverse" class="animate-row">
+                            <td>
+                                <a ng-click="domain.hidden = !domain.hidden"><span class="glyphicon" ng-class="domain.hidden ? 'glyphicon-triangle-right' : 'glyphicon-triangle-bottom'" aria-hidden="true"></span></a>
+                                <span ng-bind="domain.key"></span>
+                            </td>
+                            <td><span ng-bind="domain.totalRequests | number" class="update-item value-{{domain.totalRequests}}"></span></td>
+                            <td title="{{domain.lastRequestTime}}" am-time-ago="domain.lastRequestTime"></td>
+                        </tr>
+                        <tr ng-repeat-end ng-hide="domain.hidden">
+                            <td colspan="3">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th ng-click="applySort(domain, 'key')">Sub Domains<a ng-hide="domain.orderBy != 'key'" class="pull-right"><span class="glyphicon" ng-class="domain.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                                            <th ng-click="applySort(domain, 'totalRequests')">Requests<a ng-hide="domain.orderBy != 'totalRequests'" class="pull-right"><span class="glyphicon" ng-class="domain.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr ng-repeat="record in domain.records | orderBy:domain.orderBy:domain.orderReverse" class="animate-row">
+                                            <td ng-bind="record.key"></td>
+                                            <td ng-bind="record.totalRequests | number" class="update-item value-{{record.totalRequests}}"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="col-xs-12 col-md-6">
+                <table class="table table-bordered">
+                    <caption>
+                        <a ng-click="dnsmasq.resolversOptions.hidden = !dnsmasq.resolversOptions.hidden"><span class="glyphicon" ng-class="dnsmasq.resolversOptions.hidden ? 'glyphicon-triangle-right' : 'glyphicon-triangle-bottom'" aria-hidden="true"></span></a>
+                        Resolvers
+                        <span class="pull-right">Nodes: <span ng-bind="dnsmasq.resolvers | keylength | number"></span></span>
+                    </caption>
+                    <thead ng-hide="dnsmasq.resolversOptions.hidden">
+                        <tr>
+                            <th ng-click="applySort(dnsmasq.resolversOptions, 'key')">Resolver<a ng-hide="dnsmasq.resolversOptions.orderBy != 'key'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.resolversOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                            <th ng-click="applySort(dnsmasq.resolversOptions, 'hostname')">Hostname<a ng-hide="dnsmasq.resolversOptions.orderBy != 'hostname'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.resolversOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                            <th ng-click="applySort(dnsmasq.resolversOptions, 'totalRequests')">Requests<a ng-hide="dnsmasq.resolversOptions.orderBy != 'totalRequests'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.resolversOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                        </tr>
+                    </thead>
+                    <tbody ng-hide="dnsmasq.resolversOptions.hidden">
+                        <tr ng-repeat="resolver in dnsmasq.resolvers | orderBy:dnsmasq.resolversOptions.orderBy:dnsmasq.resolversOptions.orderReverse" class="animate-row">
+                            <td ng-bind="resolver.key"></td>
+                            <td ng-bind="resolver.hostname"></td>
+                            <td><span ng-bind="resolver.totalRequests | number" class="update-item value-{{resolver.totalRequests}}"></span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-xs-12">
+                <table class="table table-bordered">
+                    <caption>
+                        <a ng-click="dnsmasq.queriesOptions.hidden = !dnsmasq.queriesOptions.hidden"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.hidden ? 'glyphicon-triangle-right' : 'glyphicon-triangle-bottom'" aria-hidden="true"></span></a>
+                        DNS Queries Summary
+                        <span class="pull-right">Nodes: <span ng-bind="dnsmasq.queries | keylength | number"></span></span>
+                    </caption>
+                    <thead ng-hide="dnsmasq.queriesOptions.hidden">
+                        <tr>
+                            <th ng-click="applySort(dnsmasq.queriesOptions, 'hostname')">Node<a ng-hide="dnsmasq.queriesOptions.orderBy != 'hostname'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                            <th ng-click="applySort(dnsmasq.queriesOptions, 'key')">IP Address<a ng-hide="dnsmasq.queriesOptions.orderBy != 'key'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                            <th ng-click="applySort(dnsmasq.queriesOptions, 'totalTopDomains')">Top Domains<a ng-hide="dnsmasq.queriesOptions.orderBy != 'totalTopDomains'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                            <th ng-click="applySort(dnsmasq.queriesOptions, 'totalDomains')">Sub Domains<a ng-hide="dnsmasq.queriesOptions.orderBy != 'totalDomains'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                            <th ng-click="applySort(dnsmasq.queriesOptions, 'totalRequests')">Requests<a ng-hide="dnsmasq.queriesOptions.orderBy != 'totalRequests'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                            <th ng-click="applySort(dnsmasq.queriesOptions, 'lastRequestTime')">Last Time<a ng-hide="dnsmasq.queriesOptions.orderBy != 'lastRequestTime'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                        </tr>
+                    </thead>
+                    <tbody ng-hide="dnsmasq.queriesOptions.hidden">
+                        <tr ng-repeat-start="node in dnsmasq.queries | orderBy:dnsmasq.queriesOptions.orderBy:dnsmasq.queriesOptions.orderReverse" class="animate-row">
+                            <td>
+                                <a ng-click="node.hidden = !node.hidden"><span class="glyphicon" ng-class="node.hidden ? 'glyphicon-triangle-right' : 'glyphicon-triangle-bottom'" aria-hidden="true"></span></a>
+                                <span ng-bind="node.hostname ? node.hostname : node.key"></span>
+                            </td>
+                            <td ng-bind="node.key"></td>
+                            <td><span ng-bind="node.totalTopDomains | number" class="update-item value-{{node.totalTopDomains}}"></span></td>
+                            <td><span ng-bind="node.totalDomains | number" class="update-item value-{{node.totalDomains}}"></span></td>
+                            <td><span ng-bind="node.totalRequests | number" class="update-item value-{{node.totalRequests}}"></span></td>
+                            <td title="{{node.lastRequestTime}}" am-time-ago="node.lastRequestTime"></td>
+                        </tr>
+                        <tr ng-repeat-end ng-hide="node.hidden">
+                            <td colspan="6">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th ng-click="applySort(node, 'key')">Top Domains<a ng-hide="node.orderBy != 'key'" class="pull-right"><span class="glyphicon" ng-class="node.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                                            <th ng-click="applySort(node, 'totalDomains')">Sub Domains<a ng-hide="node.orderBy != 'totalDomains'" class="pull-right"><span class="glyphicon" ng-class="node.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                                            <th ng-click="applySort(node, 'totalRequests')">Requests<a ng-hide="node.orderBy != 'totalRequests'" class="pull-right"><span class="glyphicon" ng-class="node.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                                            <th ng-click="applySort(node, 'lastRequestTime')">Last Time<a ng-hide="node.orderBy != 'lastRequestTime'" class="pull-right"><span class="glyphicon" ng-class="node.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr ng-repeat-start="topdomain in node.records | orderBy:node.orderBy:node.orderReverse" class="animate-row">
+                                            <td>
+                                                <a ng-click="topdomain.hidden = !topdomain.hidden"><span class="glyphicon" ng-class="topdomain.hidden ? 'glyphicon-triangle-right' : 'glyphicon-triangle-bottom'" aria-hidden="true"></span></a>
+                                                <span ng-bind="topdomain.key"></span>
+                                            </td>
+                                            <td><span ng-bind="topdomain.totalDomains | number" class="update-item value-{{topdomain.totalDomains}}"></span></td>
+                                            <td><span ng-bind="topdomain.totalRequests | number" class="update-item value-{{topdomain.totalRequests}}"></span></td>
+                                            <td title="{{topdomain.lastRequestTime}}" am-time-ago="topdomain.lastRequestTime"></td>
+                                        </tr>
+                                        <tr ng-repeat-end ng-hide="topdomain.hidden">
+                                            <td colspan="4">
+                                                <table class="table table-condensed">
+                                                    <thead>
+                                                        <tr>
+                                                            <th ng-click="applySort(topdomain, 'domain')">Domain<a ng-hide="topdomain.orderBy != 'domain'" class="pull-right"><span class="glyphicon" ng-class="topdomain.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                                                            <th ng-click="applySort(topdomain, 'ipaddress')">IP Address<a ng-hide="topdomain.orderBy != 'ipaddress'" class="pull-right"><span class="glyphicon" ng-class="topdomain.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                                                            <th ng-click="applySort(topdomain, 'resolver')">Resolver<a ng-hide="topdomain.orderBy != 'resolver'" class="pull-right"><span class="glyphicon" ng-class="topdomain.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                                                            <th ng-click="applySort(topdomain, 'totalRequests')">Count<a ng-hide="topdomain.orderBy != 'totalRequests'" class="pull-right"><span class="glyphicon" ng-class="topdomain.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                                                            <th ng-click="applySort(topdomain, 'time')">Last Time<a ng-hide="topdomain.orderBy != 'time'" class="pull-right"><span class="glyphicon" ng-class="topdomain.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr class="animate-row"
+                                                            ng-repeat="query in topdomain.records | orderBy:topdomain.orderBy:topdomain.orderReverse"
+                                                            ng-class=" dnsmasq.isNonRoutableRequest(query) ? 'text-muted' : (query.resolver == 'cached' ? 'text-success' : '')">
+                                                            <td ng-bind="query.domain"></td>
+                                                            <td ng-bind="query.ipaddress"></td>
+                                                            <td ng-bind="query.resolver"></td>
+                                                            <td><span ng-bind="query.totalRequests" class="update-item value-{{query.totalRequests}}"></span></td>
+                                                            <td title="{{query.time}}" am-time-ago="query.time"></td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="~/js/dnsmasq.js" asp-append-version="true"></script>
+}
+
+@section styles {
+    <style type="text/css">
+        .dnsmasq .animate-row {
+            background-color: transparent;
+            transition: background-color 1s linear 0s;
+        }
+
+            .dnsmasq .animate-row.ng-enter {
+                background-color: sandybrown;
+            }
+
+        .dnsmasq .update-item {
+            background-color: transparent;
+            transition: background-color 0.26s linear 0s;
+        }
+
+            .dnsmasq .update-item[class*="-add"] {
+                background-color: yellow;
+            }
+    </style>
+}
