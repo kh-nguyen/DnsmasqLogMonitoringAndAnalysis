@@ -49,8 +49,10 @@ namespace DnsmasqLogMonitoringAndAnalysis
 
             app.UseMvc();
 
-            app.ApplicationServices.GetService<LogMessageRelay>().Listen(
-                int.Parse(Environment.GetEnvironmentVariable("DnsmasqDataPort")));
+            var listernPort = Environment.GetEnvironmentVariable("DnsmasqDataPort");
+            if (string.IsNullOrEmpty(listernPort))
+                throw new ArgumentNullException("There is no dnsmasq port in the enviroment variable.");
+            app.ApplicationServices.GetService<LogMessageRelay>().Listen(int.Parse(listernPort));
         }
     }
 

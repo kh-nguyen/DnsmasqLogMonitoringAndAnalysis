@@ -19,6 +19,30 @@ connection.start().catch(function (err) {
     return console.error(err.toString());
 });
 
+connection.on("loggedEvent", function (loggedEvent) {
+    if (typeof loggedEvent === 'undefined') {
+        return;
+    }
+
+    // convert it to an object if it is a string
+    if (typeof loggedEvent === 'string') {
+        loggedEvent = { Message: loggedEvent };
+    }
+
+    var message = loggedEvent.Message;
+
+    if (typeof message === 'string') {
+        // check if it is a dnsmasq log and trigger the event if it is
+        if (message.substring(0, 50).indexOf('dnsmasq') > 0) {
+            $(document).trigger("dnsmasq", [message]);
+
+            return;
+        }
+    }
+
+    $(document).trigger("syslog", [loggedEvent]);
+});
+
 // add support for method startsWith which is not available in IE browsers
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function (searchString, position) {
