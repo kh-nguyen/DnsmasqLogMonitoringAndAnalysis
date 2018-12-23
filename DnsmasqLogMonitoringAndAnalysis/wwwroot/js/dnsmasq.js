@@ -4,12 +4,74 @@
     System.angular.controller('DnsmasqController',
     ['$scope', '$element', '$http', '$timeout', function ($scope, $element, $http, $timeout) {
         var controller = $($element);
-        $.extend($scope, controller.data('model'));
+        var model = controller.data('model');
+        $.extend($scope, model);
 
-        $scope.dnsmasq = {
+        $scope.dnsmasq = {};
+        $.extend($scope.dnsmasq, {
             startTime: new Date(),
+            ignores: [], // network nodes to be ignored
+            categories: [
+                { name: 'adware', data: {}, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' },
+                { name: 'fakenews', data: {}, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/fakenews/hosts' },
+                { name: 'gambling', data: {}, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/gambling/hosts' },
+                { name: 'porn', data: {}, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/porn/clefspeare13/hosts' },
+                { name: 'social', data: {}, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/social/hosts' }
+            ],
+            categoriesOptions: {
+                hidden: true,
+                orderBy: 'hostname',
+                orderReverse: false,
+                load: function () {
+                    $.each($scope.dnsmasq.categories, function (index, value) {
+                        $.get(value.url, function (data) {
+                            loadCategory(data, value.data);
+                        });
+                    });
+
+                    function loadCategory(data, dict) {
+                        data = data.split('\n');
+
+                        $.each(data, function (index, value) {
+                            if (typeof value === 'undefined') {
+                                return;
+                            }
+
+                            value = value.split(' ');
+                            var ip = value[0];
+
+                            if (ip === '0.0.0.0' || ip === '127.0.0.1') {
+                                dict[value[1]] = true;
+                            }
+                        });
+                    }
+                },
+                add: function (obj) {
+                    if (typeof obj.category !== 'undefined') {
+                        return false;
+                    }
+
+                    var categories = $scope.dnsmasq.categories;
+                    for (var i = 0; i < categories.length; ++i) {
+                        var category = categories[i];
+                        var data = category.data;
+
+                        if (data[obj.domain] === true) {
+                            obj.category = category.name;
+                            return true;
+                        }
+                    }
+
+                    return false;
+                }
+            },
+            adware: {},
+            fakenews: {},
+            gambling: {},
+            porn: {},
+            social: {},
             data: [],
-            dataOptions: { hidden: false, orderBy: 'time', orderReverse: false, limit: 1000 },
+            dataOptions: { hidden: false, orderBy: 'time', orderReverse: false, limit: 100 },
             queries: [],
             queriesOptions: { hidden: false, orderBy: 'hostname', orderReverse: false },
             resolvers: [],
@@ -24,11 +86,15 @@
             },
             log: function (loggedEvent) {
                 $timeout(function () {
-                    if (loggedEvent.domain === null) {
+                    var dnsmasq = $scope.dnsmasq;
+
+                    if (dnsmasq.ignores.find(function (x) { return x == loggedEvent.requestor; })) {
                         return;
                     }
 
-                    var dnsmasq = $scope.dnsmasq;
+                    if (loggedEvent.domain === null) {
+                        return;
+                    }
 
                     var requestor = dnsmasq.queries.find(function (x) { return x.key === loggedEvent.requestor; });
                     if (typeof requestor === 'undefined') {
@@ -55,7 +121,8 @@
                             hidden: true,
                             records: [],
                             totalDomains: 0,
-                            totalRequests: 0
+                            totalRequests: 0,
+                            categories: []
                         };
                         requestor.records.push(topDomain);
                         ++requestor.totalTopDomains;
@@ -69,6 +136,12 @@
                         ++requestor.totalDomains;
                     }
                     $.extend(domain, loggedEvent);
+                    if (dnsmasq.categoriesOptions.add(domain)) {
+                        var category = topDomain.categories.find(function (x) { return x === domain.category; });
+                        if (typeof category === 'undefined') {
+                            topDomain.categories.push(domain.category);
+                        }
+                    }
                     ++domain.totalRequests;
                     ++topDomain.totalRequests;
                     ++requestor.totalRequests;
@@ -87,10 +160,12 @@
                     }
                     ++resolver.totalRequests;
 
+                    var categories = topDomain.categories;
                     topDomain = dnsmasq.domains.find(function (x) { return x.key === topDomainKey; });
                     if (typeof topDomain === 'undefined') {
                         topDomain = {
                             key: topDomainKey,
+                            categories: categories,
                             totalRequests: 0,
                             requestors: [],
                             records: [],
@@ -142,7 +217,7 @@
 
                 data.push(row);
             }
-        };
+        }, model.dnsmasq);
 
         $scope.applySort = function (options, name) {
             if (options.orderBy !== name) {
@@ -173,6 +248,9 @@
                 return /^(?=\d+\.\d+\.\d+\.\d+$)(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[0-9])\.?){4}$/.test(ipaddress);
             }  
         };
+
+        // load category lists
+        $scope.dnsmasq.categoriesOptions.load();
 
         var query = null;
 
