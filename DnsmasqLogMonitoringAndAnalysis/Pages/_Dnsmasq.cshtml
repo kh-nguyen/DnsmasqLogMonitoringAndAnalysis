@@ -25,31 +25,35 @@
     </div>
 
     <div class="row">
+        <div class="col-xs-12" ng-show="OldDataLoadedCount != OldDataCount">
+            <h6>Loading <span ng-bind="OldDataLoadedCount"></span> of <span ng-bind="OldDataCount"></span> lines...</h6>
+        </div>
+
         <div class="col-xs-12">
             <div class="row">
                 <div class="col-xs-12 col-md-6">
                     <table class="table table-condensed table-bordered">
                         <caption>
-                            <a ng-click="dnsmasq.domainsOptions.hidden = !dnsmasq.domainsOptions.hidden"><span class="glyphicon" ng-class="dnsmasq.domainsOptions.hidden ? 'glyphicon-triangle-right' : 'glyphicon-triangle-bottom'" aria-hidden="true"></span></a>
+                            <span toggle-hidden options="dnsmasq.domainsOptions"></span>
                             Domains
                             <span class="pull-right">
                                 <a title="Expand All" ng-click="dnsmasq.domainsOptions.expandAll = !dnsmasq.domainsOptions.expandAll"><span class="glyphicon" ng-class="dnsmasq.domainsOptions.expandAll ? 'glyphicon-minus' : 'glyphicon-plus'" aria-hidden="true"></span></a>
                                 <a ng-click="dnsmasq.domainsOptions.searchShow = !dnsmasq.domainsOptions.searchShow" title="Search"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
                                 <input placeholder="search" ng-show="dnsmasq.domainsOptions.searchShow" ng-model="dnsmasq.domainsOptions.search" />
-                                Nodes: <span ng-bind="dnsmasq.domains | keylength | number"></span>
+                                Nodes: <span ng-bind="dnsmasq.domains.length | number"></span>
                             </span>
                         </caption>
                         <thead ng-hide="dnsmasq.domainsOptions.hidden">
                             <tr class="info">
-                                <th ng-click="applySort(dnsmasq.domainsOptions, 'key')">Top Domains<a ng-hide="dnsmasq.domainsOptions.orderBy != 'key'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.domainsOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                <th ng-click="applySort(dnsmasq.domainsOptions, 'categories')">Categories<a ng-hide="dnsmasq.domainsOptions.orderBy != 'categories'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.domainsOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                <th ng-click="applySort(dnsmasq.domainsOptions, 'requestors')">Requestors<a ng-hide="dnsmasq.domainsOptions.orderBy != 'totalRequestors'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.domainsOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                <th ng-click="applySort(dnsmasq.domainsOptions, 'totalRequests')">Requests<a ng-hide="dnsmasq.domainsOptions.orderBy != 'totalRequests'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.domainsOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                <th ng-click="applySort(dnsmasq.domainsOptions, 'lastRequestTime')">Last Time<a ng-hide="dnsmasq.domainsOptions.orderBy != 'lastRequestTime'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.domainsOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                                <th sort-direction options="dnsmasq.domainsOptions" order-by="key" title="Top Domains"></th>
+                                <th sort-direction options="dnsmasq.domainsOptions" order-by="categories" title="Categories"></th>
+                                <th sort-direction options="dnsmasq.domainsOptions" order-by="requestors" title="Requestors"></th>
+                                <th sort-direction options="dnsmasq.domainsOptions" order-by="totalRequests" title="Requests"></th>
+                                <th sort-direction options="dnsmasq.domainsOptions" order-by="lastRequestTime" title="Last Time"></th>
                             </tr>
                         </thead>
                         <tbody ng-hide="dnsmasq.domainsOptions.hidden">
-                            <tr ng-repeat-start="domain in dnsmasq.domains | filter:dnsmasq.domainsOptions.search | orderBy:dnsmasq.domainsOptions.orderBy:dnsmasq.domainsOptions.orderReverse" class="animate-row">
+                            <tr ng-repeat-start="domain in dnsmasq.domains | filter:dnsmasq.domainsOptions.search | orderBy:dnsmasq.domainsOptions.orderBy:dnsmasq.domainsOptions.orderReverse | limitTo: dnsmasq.domainsOptions.limitTo" class="animate-row">
                                 <td>
                                     <a ng-click="domain.hidden = !domain.hidden"><span class="glyphicon" ng-class="domain.hidden && !dnsmasq.domainsOptions.expandAll ? 'glyphicon-triangle-right' : 'glyphicon-triangle-bottom'" aria-hidden="true"></span></a>
                                     <span ng-bind="domain.key"></span>
@@ -59,7 +63,7 @@
                                         <li ng-class="category != 'adware' ? 'text-warning' : ''" ng-bind="category"></li>
                                     </ul>
                                 </td>
-                                <td><span ng-bind="domain.requestors | keylength | number"></span></td>
+                                <td><span ng-bind="domain.requestors.length | number"></span></td>
                                 <td><span ng-bind="domain.totalRequests | number" class="update-item value-{{domain.totalRequests}}"></span></td>
                                 <td title="{{domain.lastRequestTime}}" am-time-ago="domain.lastRequestTime"></td>
                             </tr>
@@ -68,10 +72,10 @@
                                     <table class="table table-condensed table-bordered">
                                         <thead>
                                             <tr class="warning">
-                                                <th ng-click="applySort(domain, 'key')">Sub Domains<a ng-hide="domain.orderBy != 'key'" class="pull-right"><span class="glyphicon" ng-class="domain.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                                <th ng-click="applySort(domain, 'totalRequestors')">Requestors<a ng-hide="domain.orderBy != 'totalRequestors'" class="pull-right"><span class="glyphicon" ng-class="domain.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                                <th ng-click="applySort(domain, 'totalRequests')">Requests<a ng-hide="domain.orderBy != 'totalRequests'" class="pull-right"><span class="glyphicon" ng-class="domain.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                                <th ng-click="applySort(domain, 'lastRequestTime')">Last Time<a ng-hide="domain.orderBy != 'lastRequestTime'" class="pull-right"><span class="glyphicon" ng-class="domain.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                                                <th sort-direction options="domain" order-by="key" title="Sub Domains"></th>
+                                                <th sort-direction options="domain" order-by="totalRequestors" title="Requestors"></th>
+                                                <th sort-direction options="domain" order-by="totalRequests" title="Requests"></th>
+                                                <th sort-direction options="domain" order-by="lastRequestTime" title="Last Time"></th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -89,9 +93,9 @@
                                                     <table class="table table-condensed table-bordered">
                                                         <thead>
                                                             <tr>
-                                                                <th ng-click="applySort(record, 'key')">Requestor</th>
-                                                                <th ng-click="applySort(record, 'totalRequests')">Requests</th>
-                                                                <th ng-click="applySort(record, 'lastRequestTime')">Last Time</th>
+                                                                <th sort-direction options="record" order-by="key" title="Requestor"></th>
+                                                                <th sort-direction options="record" order-by="totalRequests" title="Requests"></th>
+                                                                <th sort-direction options="record" order-by="lastRequestTime" title="Last Time"></th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
@@ -108,6 +112,20 @@
                                     </table>
                                 </td>
                             </tr>
+                            <tr>
+                                <td colspan="5">
+                                    <div class="row">
+                                        <div class="col-xs-4"></div>
+                                        <div class="col-xs-4">
+                                            <select ng-options="limit for limit in dnsmasq.limits"
+                                                    ng-model="dnsmasq.domainsOptions.limitTo"></select>
+                                        </div>
+                                        <div class="col-xs-4">
+                                            <span class="pull-right">View <span ng-bind="dnsmasq.domains.length <= dnsmasq.domainsOptions.limitTo ? dnsmasq.domains.length : dnsmasq.domainsOptions.limitTo"></span> of <span ng-bind="dnsmasq.domains.length | number"></span></span>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -115,7 +133,7 @@
                 <div class="col-xs-12 col-md-4">
                     <table class="table table-condensed table-bordered">
                         <caption>
-                            <a ng-click="dnsmasq.resolversOptions.hidden = !dnsmasq.resolversOptions.hidden"><span class="glyphicon" ng-class="dnsmasq.resolversOptions.hidden ? 'glyphicon-triangle-right' : 'glyphicon-triangle-bottom'" aria-hidden="true"></span></a>
+                            <span toggle-hidden options="dnsmasq.resolversOptions"></span>
                             Resolvers
                             <span class="pull-right">
                                 <a ng-click="dnsmasq.resolversOptions.searchShow = !dnsmasq.resolversOptions.searchShow" title="Search"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
@@ -125,9 +143,9 @@
                         </caption>
                         <thead ng-hide="dnsmasq.resolversOptions.hidden">
                             <tr class="info">
-                                <th ng-click="applySort(dnsmasq.resolversOptions, 'key')">Resolver<a ng-hide="dnsmasq.resolversOptions.orderBy != 'key'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.resolversOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                <th ng-click="applySort(dnsmasq.resolversOptions, 'hostname')">Hostname<a ng-hide="dnsmasq.resolversOptions.orderBy != 'hostname'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.resolversOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                <th ng-click="applySort(dnsmasq.resolversOptions, 'totalRequests')">Requests<a ng-hide="dnsmasq.resolversOptions.orderBy != 'totalRequests'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.resolversOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                                <th sort-direction options="dnsmasq.resolversOptions" order-by="key" title="Resolver"></th>
+                                <th sort-direction options="dnsmasq.resolversOptions" order-by="hostname" title="Hostname"></th>
+                                <th sort-direction options="dnsmasq.resolversOptions" order-by="totalRequests" title="Requests"></th>
                             </tr>
                         </thead>
                         <tbody ng-hide="dnsmasq.resolversOptions.hidden">
@@ -143,13 +161,13 @@
                 <div class="col-xs-12 col-md-2">
                     <table class="table table-condensed table-bordered">
                         <caption>
-                            <a ng-click="dnsmasq.categoriesOptions.hidden = !dnsmasq.categoriesOptions.hidden"><span class="glyphicon" ng-class="dnsmasq.categoriesOptions.hidden ? 'glyphicon-triangle-right' : 'glyphicon-triangle-bottom'" aria-hidden="true"></span></a>
+                            <span toggle-hidden options="dnsmasq.categoriesOptions"></span>
                             Categories
                         </caption>
                         <thead ng-hide="dnsmasq.categoriesOptions.hidden">
                             <tr class="info">
-                                <th ng-click="applySort(dnsmasq.categoriesOptions, 'name')">Name<a ng-hide="dnsmasq.categoriesOptions.orderBy != 'name'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.categoriesOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                <th ng-click="applySort(dnsmasq.categoriesOptions, 'count')">Count<a ng-hide="dnsmasq.categoriesOptions.orderBy != 'count'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.categoriesOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                                <th sort-direction options="dnsmasq.categoriesOptions" order-by="name" title="Name"></th>
+                                <th sort-direction options="dnsmasq.categoriesOptions" order-by="count" title="Count"></th>
                             </tr>
                         </thead>
                         <tbody ng-hide="dnsmasq.categoriesOptions.hidden">
@@ -166,7 +184,7 @@
                 <div class="col-xs-12">
                     <table class="table table-condensed table-bordered">
                         <caption>
-                            <a ng-click="dnsmasq.queriesOptions.hidden = !dnsmasq.queriesOptions.hidden"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.hidden ? 'glyphicon-triangle-right' : 'glyphicon-triangle-bottom'" aria-hidden="true"></span></a>
+                            <span toggle-hidden options="dnsmasq.queriesOptions"></span>
                             DNS Queries Summary
                             <span class="pull-right">
                                 <a title="Expand All" ng-click="dnsmasq.queriesOptions.expandAll = !dnsmasq.queriesOptions.expandAll"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.expandAll ? 'glyphicon-minus' : 'glyphicon-plus'" aria-hidden="true"></span></a>
@@ -177,12 +195,12 @@
                         </caption>
                         <thead ng-hide="dnsmasq.queriesOptions.hidden">
                             <tr class="info">
-                                <th ng-click="applySort(dnsmasq.queriesOptions, 'hostname')">Node<a ng-hide="dnsmasq.queriesOptions.orderBy != 'hostname'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                <th ng-click="applySort(dnsmasq.queriesOptions, 'key')">IP Address<a ng-hide="dnsmasq.queriesOptions.orderBy != 'key'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                <th ng-click="applySort(dnsmasq.queriesOptions, 'totalTopDomains')">Top Domains<a ng-hide="dnsmasq.queriesOptions.orderBy != 'totalTopDomains'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                <th ng-click="applySort(dnsmasq.queriesOptions, 'totalDomains')">Sub Domains<a ng-hide="dnsmasq.queriesOptions.orderBy != 'totalDomains'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                <th ng-click="applySort(dnsmasq.queriesOptions, 'totalRequests')">Requests<a ng-hide="dnsmasq.queriesOptions.orderBy != 'totalRequests'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                <th ng-click="applySort(dnsmasq.queriesOptions, 'lastRequestTime')">Last Time<a ng-hide="dnsmasq.queriesOptions.orderBy != 'lastRequestTime'" class="pull-right"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                                <th sort-direction options="dnsmasq.queriesOptions" order-by="hostname" title="Node"></th>
+                                <th sort-direction options="dnsmasq.queriesOptions" order-by="key" title="IP Address"></th>
+                                <th sort-direction options="dnsmasq.queriesOptions" order-by="totalTopDomains" title="Top Domains"></th>
+                                <th sort-direction options="dnsmasq.queriesOptions" order-by="totalDomains" title="Sub Domains"></th>
+                                <th sort-direction options="dnsmasq.queriesOptions" order-by="totalRequests" title="Requests"></th>
+                                <th sort-direction options="dnsmasq.queriesOptions" order-by="lastRequestTime" title="Last Time"></th>
                             </tr>
                         </thead>
                         <tbody ng-hide="dnsmasq.queriesOptions.hidden">
@@ -202,17 +220,17 @@
                                     <table class="table table-condensed table-bordered">
                                         <thead>
                                             <tr class="warning">
-                                                <th ng-click="applySort(node, 'key')">Top Domains<a ng-hide="node.orderBy != 'key'" class="pull-right"><span class="glyphicon" ng-class="node.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                                <th ng-click="applySort(node, 'categories')">Categories<a ng-hide="node.orderBy != 'categories'" class="pull-right"><span class="glyphicon" ng-class="node.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                                <th ng-click="applySort(node, 'totalDomains')">Sub Domains<a ng-hide="node.orderBy != 'totalDomains'" class="pull-right"><span class="glyphicon" ng-class="node.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                                <th ng-click="applySort(node, 'totalRequests')">Requests<a ng-hide="node.orderBy != 'totalRequests'" class="pull-right"><span class="glyphicon" ng-class="node.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                                <th ng-click="applySort(node, 'lastRequestTime')">Last Time<a ng-hide="node.orderBy != 'lastRequestTime'" class="pull-right"><span class="glyphicon" ng-class="node.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                                                <th sort-direction options="node" order-by="key" title="Top Domains"></th>
+                                                <th sort-direction options="node" order-by="categories" title="Categories"></th>
+                                                <th sort-direction options="node" order-by="totalDomains" title="Sub Domains"></th>
+                                                <th sort-direction options="node" order-by="totalRequests" title="Requests"></th>
+                                                <th sort-direction options="node" order-by="lastRequestTime" title="Last Time"></th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <tr ng-repeat-start="topdomain in node.records | filter:dnsmasq.queriesOptions.search | orderBy:node.orderBy:node.orderReverse" class="animate-row">
                                                 <td>
-                                                    <a ng-click="topdomain.hidden = !topdomain.hidden"><span class="glyphicon" ng-class="topdomain.hidden ? 'glyphicon-triangle-right' : 'glyphicon-triangle-bottom'" aria-hidden="true"></span></a>
+                                                    <span toggle-hidden options="topdomain"></span>
                                                     <span ng-bind="topdomain.key"></span>
                                                 </td>
                                                 <td>
@@ -229,12 +247,12 @@
                                                     <table class="table table-condensed">
                                                         <thead>
                                                             <tr>
-                                                                <th ng-click="applySort(topdomain, 'domain')">Domain<a ng-hide="topdomain.orderBy != 'domain'" class="pull-right"><span class="glyphicon" ng-class="topdomain.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                                                <th ng-click="applySort(topdomain, 'ipaddress')">IP Address<a ng-hide="topdomain.orderBy != 'ipaddress'" class="pull-right"><span class="glyphicon" ng-class="topdomain.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                                                <th ng-click="applySort(topdomain, 'resolver')">Resolver<a ng-hide="topdomain.orderBy != 'resolver'" class="pull-right"><span class="glyphicon" ng-class="topdomain.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                                                <th ng-click="applySort(topdomain, 'category')">Category<a ng-hide="topdomain.orderBy != 'category'" class="pull-right"><span class="glyphicon" ng-class="topdomain.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                                                <th ng-click="applySort(topdomain, 'totalRequests')">Count<a ng-hide="topdomain.orderBy != 'totalRequests'" class="pull-right"><span class="glyphicon" ng-class="topdomain.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
-                                                                <th ng-click="applySort(topdomain, 'time')">Last Time<a ng-hide="topdomain.orderBy != 'time'" class="pull-right"><span class="glyphicon" ng-class="topdomain.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span></a></th>
+                                                                <th sort-direction options="topdomain" order-by="domain" title="Domain"></th>
+                                                                <th sort-direction options="topdomain" order-by="ipaddress" title="IP Address"></th>
+                                                                <th sort-direction options="topdomain" order-by="resolver" title="Resolver"></th>
+                                                                <th sort-direction options="topdomain" order-by="category" title="Category"></th>
+                                                                <th sort-direction options="topdomain" order-by="totalRequests" title="Count"></th>
+                                                                <th sort-direction options="topdomain" order-by="time" title="Last Time"></th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>

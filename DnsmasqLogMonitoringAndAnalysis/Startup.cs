@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -60,11 +61,21 @@ namespace DnsmasqLogMonitoringAndAnalysis
 
     public class LogMessageRelay
     {
+        // Stores the messages received since the app started
+        public static Queue<string> LoggedMessages = new Queue<string>();
+
+        // the max number of messages are allowed in the LoggedMessages list
+        private readonly int LoggedMessagesMaxSize = 100000;
+
         private readonly IHubContext<DnsmasqQueriesHub> hubContext;
 
         public LogMessageRelay(IHubContext<DnsmasqQueriesHub> hubContext)
         {
             this.hubContext = hubContext;
+
+            var loggedMessagesMaxSize = Environment.GetEnvironmentVariable("LoggedMessagesMaxSize");
+            if (!string.IsNullOrEmpty(loggedMessagesMaxSize))
+                int.TryParse(loggedMessagesMaxSize, out LoggedMessagesMaxSize);
         }
 
         public void Listen(int port)
@@ -96,6 +107,10 @@ namespace DnsmasqLogMonitoringAndAnalysis
                                     while ((line = reader.ReadLine()) != null)
                                     {
                                         hubContext.Clients.All.SendAsync("loggedEvent", line);
+
+                                        if (LoggedMessages.Count >= LoggedMessagesMaxSize)
+                                            LoggedMessages.Dequeue();
+                                        LoggedMessages.Enqueue(line);
                                     }
                                 }
                             }

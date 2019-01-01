@@ -6,7 +6,8 @@
     var viewModel = new {
         DomainName = "lan",
         HostnameResolveUrl = "/api/Resolve/Hostname",
-        dnsmasq = new { ignores = new string[] { "192.168.1.2" } }
+        dnsmasq = new { ignores = new string[] { "192.168.1.0" } },
+        OldData = LogMessageRelay.LoggedMessages
     };
 }
 

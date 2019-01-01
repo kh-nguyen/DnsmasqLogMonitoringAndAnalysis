@@ -7,9 +7,10 @@
         var model = controller.data('model');
         $.extend($scope, model);
 
-        $scope.dnsmasq = {};
-        $.extend($scope.dnsmasq, {
+        var dnsmasq = $scope.dnsmasq = {};
+        $.extend(dnsmasq, {
             startTime: new Date(),
+            limits: [5, 10, 20, 50, 100, 200, 500, 1000],
             ignores: [], // network nodes to be ignored
             categories: [
                 { name: 'adware', data: {}, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' },
@@ -23,7 +24,7 @@
                 orderBy: 'hostname',
                 orderReverse: false,
                 load: function () {
-                    $.each($scope.dnsmasq.categories, function (index, value) {
+                    $.each(dnsmasq.categories, function (index, value) {
                         $.get(value.url, function (data) {
                             loadCategory(data, value.data);
                         });
@@ -51,7 +52,7 @@
                         return false;
                     }
 
-                    var categories = $scope.dnsmasq.categories;
+                    var categories = dnsmasq.categories;
                     for (var i = 0; i < categories.length; ++i) {
                         var category = categories[i];
                         var data = category.data;
@@ -65,11 +66,6 @@
                     return false;
                 }
             },
-            adware: {},
-            fakenews: {},
-            gambling: {},
-            porn: {},
-            social: {},
             data: [],
             dataOptions: { hidden: false, orderBy: 'time', orderReverse: false, limit: 100 },
             queries: [],
@@ -77,7 +73,7 @@
             resolvers: [],
             resolversOptions: { hidden: true, orderBy: 'key', orderReverse: false },
             domains: [],
-            domainsOptions: { hidden: true, orderBy: 'key', orderReverse: false },
+            domainsOptions: { hidden: true, orderBy: 'lastRequestTime', orderReverse: true, limitTo: 10, page: 1 },
             isNonRoutableRequest: function (query) {
                 return typeof query.ipaddress === 'undefined'
                     || query.ipaddress === '0.0.0.0'
@@ -85,147 +81,154 @@
                     || query.ipaddress.indexOf('NODATA') === 0;
             },
             log: function (loggedEvent) {
-                $timeout(function () {
-                    var dnsmasq = $scope.dnsmasq;
+                var dnsmasq = $scope.dnsmasq;
 
-                    if (dnsmasq.ignores.find(function (x) { return x == loggedEvent.requestor; })) {
-                        return;
-                    }
+                if (dnsmasq.ignores.find(function (x) { return x == loggedEvent.requestor; })) {
+                    return;
+                }
 
-                    if (loggedEvent.domain === null) {
-                        return;
-                    }
+                if (loggedEvent.domain === null) {
+                    return;
+                }
 
-                    var requestor = dnsmasq.queries.find(function (x) { return x.key === loggedEvent.requestor; });
-                    if (typeof requestor === 'undefined') {
-                        requestor = {
-                            key: loggedEvent.requestor,
-                            records: [],
-                            totalTopDomains: 0,
-                            totalDomains: 0,
-                            totalRequests: 0,
-                            hidden: true
-                        };
-                        dnsmasq.queries.push(requestor);
+                var requestor = dnsmasq.queries.find(function (x) { return x.key === loggedEvent.requestor; });
+                if (typeof requestor === 'undefined') {
+                    requestor = {
+                        key: loggedEvent.requestor,
+                        records: [],
+                        totalTopDomains: 0,
+                        totalDomains: 0,
+                        totalRequests: 0,
+                        hidden: true
+                    };
+                    dnsmasq.queries.push(requestor);
 
-                        $scope.networkResolve(loggedEvent.requestor, requestor);
-                    }
+                    $scope.networkResolve(loggedEvent.requestor, requestor);
+                }
 
-                    var domainComponents = loggedEvent.domain.split('.');
-                    var topDomainKey = domainComponents[domainComponents.length - 2]
-                        + '.' + domainComponents[domainComponents.length - 1];
-                    var topDomain = requestor.records.find(function (x) { return x.key === topDomainKey; });
-                    if (typeof topDomain === 'undefined') {
-                        topDomain = {
-                            key: topDomainKey,
-                            hidden: true,
-                            records: [],
-                            totalDomains: 0,
-                            totalRequests: 0,
-                            categories: []
-                        };
-                        requestor.records.push(topDomain);
-                        ++requestor.totalTopDomains;
-                    }
+                var domainComponents = loggedEvent.domain.split('.');
+                var topDomainKey = domainComponents[domainComponents.length - 2]
+                    + '.' + domainComponents[domainComponents.length - 1];
+                var topDomain = requestor.records.find(function (x) { return x.key === topDomainKey; });
+                if (typeof topDomain === 'undefined') {
+                    topDomain = {
+                        key: topDomainKey,
+                        hidden: true,
+                        records: [],
+                        totalDomains: 0,
+                        totalRequests: 0,
+                        categories: []
+                    };
+                    requestor.records.push(topDomain);
+                    ++requestor.totalTopDomains;
+                }
 
-                    var domain = topDomain.records.find(function (x) { return x.domain === loggedEvent.domain; });
-                    if (typeof domain === 'undefined') {
-                        domain = { totalRequests: 0 };
-                        topDomain.records.push(domain);
-                        ++topDomain.totalDomains;
-                        ++requestor.totalDomains;
+                var domain = topDomain.records.find(function (x) { return x.domain === loggedEvent.domain; });
+                if (typeof domain === 'undefined') {
+                    domain = { totalRequests: 0 };
+                    topDomain.records.push(domain);
+                    ++topDomain.totalDomains;
+                    ++requestor.totalDomains;
+                }
+                $.extend(domain, loggedEvent);
+                if (dnsmasq.categoriesOptions.add(domain)) {
+                    var category = topDomain.categories.find(function (x) { return x === domain.category; });
+                    if (typeof category === 'undefined') {
+                        topDomain.categories.push(domain.category);
                     }
-                    $.extend(domain, loggedEvent);
-                    if (dnsmasq.categoriesOptions.add(domain)) {
-                        var category = topDomain.categories.find(function (x) { return x === domain.category; });
-                        if (typeof category === 'undefined') {
-                            topDomain.categories.push(domain.category);
-                        }
-                    }
-                    ++domain.totalRequests;
-                    ++topDomain.totalRequests;
-                    ++requestor.totalRequests;
+                }
+                ++domain.totalRequests;
+                ++topDomain.totalRequests;
+                ++requestor.totalRequests;
+                if (typeof topDomain.lastRequestTime === 'undefined' ||
+                    topDomain.lastRequestTime < loggedEvent.time) {
                     topDomain.lastRequestTime = loggedEvent.time;
+                }
+                if (typeof requestor.lastRequestTime === 'undefined' ||
+                    requestor.lastRequestTime < loggedEvent.time) {
                     requestor.lastRequestTime = loggedEvent.time;
+                }
 
-                    var resolver = dnsmasq.resolvers.find(function (x) { return x.key === loggedEvent.resolver; });
-                    if (typeof resolver === 'undefined') {
-                        resolver = {
-                            key: loggedEvent.resolver,
-                            totalRequests: 0
-                        };
-                        dnsmasq.resolvers.push(resolver);
+                var resolver = dnsmasq.resolvers.find(function (x) { return x.key === loggedEvent.resolver; });
+                if (typeof resolver === 'undefined') {
+                    resolver = {
+                        key: loggedEvent.resolver,
+                        totalRequests: 0
+                    };
+                    dnsmasq.resolvers.push(resolver);
 
-                        $scope.networkResolve(loggedEvent.resolver, resolver);
-                    }
-                    ++resolver.totalRequests;
+                    $scope.networkResolve(loggedEvent.resolver, resolver);
+                }
+                ++resolver.totalRequests;
 
-                    var categories = topDomain.categories;
-                    topDomain = dnsmasq.domains.find(function (x) { return x.key === topDomainKey; });
-                    if (typeof topDomain === 'undefined') {
-                        topDomain = {
-                            key: topDomainKey,
-                            categories: categories,
-                            totalRequests: 0,
-                            requestors: [],
-                            records: [],
-                            hidden: true
-                        };
-                        dnsmasq.domains.push(topDomain);
-                    }
-                    domain = topDomain.records.find(function (x) { return x.key === loggedEvent.domain; });
-                    if (typeof domain === 'undefined') {
-                        domain = {
-                            key: loggedEvent.domain,
-                            totalRequestors: 0,
-                            totalRequests: 0,
-                            records: [],
-                            hidden: true
-                        };
-                        topDomain.records.push(domain);
-                    }
-                    requestor = domain.records.find(function (x) { return x.key === loggedEvent.requestor; });
-                    if (typeof requestor === 'undefined') {
-                        requestor = {
-                            key: loggedEvent.requestor,
-                            totalRequests: 0,
-                            hidden: true
-                        };
-                        domain.records.push(requestor);
-                        ++domain.totalRequestors;
+                var categories = topDomain.categories;
+                topDomain = dnsmasq.domains.find(function (x) { return x.key === topDomainKey; });
+                if (typeof topDomain === 'undefined') {
+                    topDomain = {
+                        key: topDomainKey,
+                        categories: categories,
+                        totalRequests: 0,
+                        requestors: [],
+                        records: [],
+                        hidden: true
+                    };
+                    dnsmasq.domains.push(topDomain);
+                }
+                domain = topDomain.records.find(function (x) { return x.key === loggedEvent.domain; });
+                if (typeof domain === 'undefined') {
+                    domain = {
+                        key: loggedEvent.domain,
+                        totalRequestors: 0,
+                        totalRequests: 0,
+                        records: [],
+                        hidden: true
+                    };
+                    topDomain.records.push(domain);
+                }
+                requestor = domain.records.find(function (x) { return x.key === loggedEvent.requestor; });
+                if (typeof requestor === 'undefined') {
+                    requestor = {
+                        key: loggedEvent.requestor,
+                        totalRequests: 0,
+                        hidden: true
+                    };
+                    domain.records.push(requestor);
+                    ++domain.totalRequestors;
 
-                        var topDomainRequestors = topDomain.requestors.find(function (x) { return x === loggedEvent.requestor; });
-                        if (typeof topDomainRequestors === 'undefined') {
-                            topDomain.requestors.push(loggedEvent.requestor);
-                        }
+                    var topDomainRequestors = topDomain.requestors.find(function (x) { return x === loggedEvent.requestor; });
+                    if (typeof topDomainRequestors === 'undefined') {
+                        topDomain.requestors.push(loggedEvent.requestor);
                     }
-                    ++requestor.totalRequests;
-                    ++domain.totalRequests;
-                    ++topDomain.totalRequests;
+                }
+                ++requestor.totalRequests;
+                ++domain.totalRequests;
+                ++topDomain.totalRequests;
+                if (typeof requestor.lastRequestTime === 'undefined' ||
+                    requestor.lastRequestTime < loggedEvent.time) {
                     requestor.lastRequestTime = loggedEvent.time;
+                }
+                if (typeof domain.lastRequestTime === 'undefined' ||
+                    domain.lastRequestTime < loggedEvent.time) {
                     domain.lastRequestTime = loggedEvent.time;
+                }
+                if (typeof topDomain.lastRequestTime === 'undefined' ||
+                    topDomain.lastRequestTime < loggedEvent.time) {
                     topDomain.lastRequestTime = loggedEvent.time;
-                });
+                }
             },
             dataAdd: function (row) {
-                var data = $scope.dnsmasq.data;
-                var options = $scope.dnsmasq.dataOptions;
+                var data = dnsmasq.data;
+                var options = dnsmasq.dataOptions;
 
                 if (typeof options.limit !== 'undefined' && data.length >= options.limit) {
                     data.shift();
                 }
 
-                data.push(row);
+                $scope.$apply(function () {
+                    data.push(row);
+                });
             }
         }, model.dnsmasq);
-
-        $scope.applySort = function (options, name) {
-            if (options.orderBy !== name) {
-                options.orderBy = name;
-            } else {
-                options.orderReverse = !options.orderReverse;
-            }
-        };
 
         $scope.networkResolve = function (ipAddress, storageObject) {
             ipAddress = $.trim(ipAddress);
@@ -250,25 +253,25 @@
         };
 
         // load category lists
-        $scope.dnsmasq.categoriesOptions.load();
+        dnsmasq.categoriesOptions.load();
 
         var query = null;
 
-        $(document).on("dnsmasq", function (event, line) {
-            if ($scope.dnsmasq.dataOptions.pause) {
+        $(document).on("dnsmasq", function (event, line, hidden) {
+            if (dnsmasq.dataOptions.pause) {
                 return;
             }
 
-            var split = line.split(' ');
+            var split = line.split(' ')
+                // remove null, undefined and empty
+                .filter(function (e) { return e === 0 || e });
             var baseIndex = 4;
 
             if (split.length <= baseIndex) {
                 // print the line as is
-                $timeout(function () {
-                    $scope.dnsmasq.dataAdd({
-                        time: new Date(),
-                        message: line
-                    });
+                dnsmasq.dataAdd({
+                    time: new Date(),
+                    message: line
                 });
 
                 return;
@@ -278,7 +281,8 @@
             var loggerName = split[3].slice(0, -1); // remove the ':' at the end of the name
 
             // write to the raw data table
-            $timeout(function () {
+            //-------------------------------------
+            if (!hidden) {
                 var message = line.substring(line.indexOf(loggerName) + loggerName.length + 2);
                 var messageSplits = message.split(' ');
 
@@ -298,13 +302,14 @@
                     }
                 }
 
-                $scope.dnsmasq.dataAdd({
+                dnsmasq.dataAdd({
                     time: timestamp,
                     logger: loggerName,
                     message: message,
                     messageSplits: messageSplits
                 });
-            });
+            }
+            //-------------------------------------
 
             var queryKey = "query[";
             var cmd = split[baseIndex];
@@ -312,7 +317,7 @@
             if (cmd.startsWith(queryKey)) {
                 if (query !== null) {
                     // not get a reply ?
-                    $scope.dnsmasq.log(query);
+                    dnsmasq.log(query);
                 }
 
                 query = {};
@@ -335,7 +340,7 @@
                         // ???
                     }
                     else {
-                        $scope.dnsmasq.log(query);
+                        dnsmasq.log(query);
                         query = null;
                     }
                 }
@@ -361,5 +366,57 @@
                 return timestamp;
             }
         });
+
+        // load old data if any
+        $timeout(function () {
+            if (typeof model.OldData === 'undefined') {
+                return;
+            }
+
+            var oldData = model.OldData;
+            $scope.OldDataCount = oldData.length;
+            $scope.OldDataLoadedCount = 0;
+
+            var interval = setInterval(function () {
+                if (oldData.length > 0) {
+                    var loggedEvent = oldData.pop();
+                    System.loggedEvent({ Message: loggedEvent, hidden: true });
+                    $scope.OldDataLoadedCount++;
+                } else {
+                    clearInterval(interval);
+                    model.OldData = null;
+                }
+            }, 5);
+        });
     }]);
+
+    System.angular.directive('sortDirection', function () {
+        return {
+            restrict: 'A',
+            scope: { options: '=', orderBy: '@', title: '@' },
+            template: "{{title}}<a ng-hide=\"options.orderBy != orderBy\" class=\"pull-right\"><span class=\"glyphicon\" ng-class=\"options.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'\" aria-hidden=\"true\"></span></a>",
+            link: function (scope, element, attr) {
+                element.on('click', function (event) {
+                    var options = scope.options;
+                    var orderBy = scope.orderBy;
+
+                    scope.$apply(function () {
+                        if (options.orderBy !== orderBy) {
+                            options.orderBy = orderBy;
+                        } else {
+                            options.orderReverse = !options.orderReverse;
+                        }
+                    });
+                });
+            }
+        };
+    });
+
+    System.angular.directive('toggleHidden', function () {
+        return {
+            restrict: 'A',
+            scope: { options: '=' },
+            template: "<a ng-click=\"options.hidden = !options.hidden\"><span class=\"glyphicon\" ng-class=\"options.hidden ? 'glyphicon-triangle-right' : 'glyphicon-triangle-bottom'\" aria-hidden=\"true\"></span></a>"
+        };
+    });
 }());
