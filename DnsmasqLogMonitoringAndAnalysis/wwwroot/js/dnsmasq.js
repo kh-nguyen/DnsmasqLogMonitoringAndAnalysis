@@ -11,13 +11,13 @@
         $.extend(dnsmasq, {
             startTime: new Date(),
             limits: [5, 10, 20, 50, 100, 200, 500, 1000],
-            ignores: [], // network nodes to be ignored
+            ignores: ['0.0.0.0'], // network nodes to be ignored
             categories: [
                 { name: 'adware', data: {}, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' },
-                { name: 'fakenews', data: {}, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/fakenews/hosts' },
-                { name: 'gambling', data: {}, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/gambling/hosts' },
-                { name: 'porn', data: {}, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/porn/clefspeare13/hosts' },
-                { name: 'social', data: {}, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/social/hosts' }
+                { name: 'fakenews', classes: 'text-danger', data: {}, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/fakenews/hosts' },
+                { name: 'gambling', classes: 'text-danger', data: {}, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/gambling/hosts' },
+                { name: 'porn', classes: 'text-danger', data: {}, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/porn/clefspeare13/hosts' },
+                { name: 'social', classes: 'text-warning', data: {}, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/social/sinfonietta/hosts' }
             ],
             categoriesOptions: {
                 hidden: true,
@@ -64,6 +64,15 @@
                     }
 
                     return false;
+                },
+                getClasses: function (categoryName) {
+                    var category = dnsmasq.categories.find(function (x) { return x.name === categoryName; });
+
+                    if (typeof category !== 'undefined') {
+                        return category.classes;
+                    }
+
+                    return null;
                 }
             },
             data: [],
@@ -83,7 +92,7 @@
             log: function (loggedEvent) {
                 var dnsmasq = $scope.dnsmasq;
 
-                if (dnsmasq.ignores.find(function (x) { return x == loggedEvent.requestor; })) {
+                if ($.inArray($.trim(loggedEvent.requestor), dnsmasq.ignores) >= 0) {
                     return;
                 }
 
@@ -95,11 +104,12 @@
                 if (typeof requestor === 'undefined') {
                     requestor = {
                         key: loggedEvent.requestor,
+                        hidden: true,
                         records: [],
                         totalTopDomains: 0,
                         totalDomains: 0,
                         totalRequests: 0,
-                        hidden: true
+                        categories: []
                     };
                     dnsmasq.queries.push(requestor);
 
@@ -135,6 +145,12 @@
                     var category = topDomain.categories.find(function (x) { return x === domain.category; });
                     if (typeof category === 'undefined') {
                         topDomain.categories.push(domain.category);
+
+                        // add category to the requester object if not already added
+                        category = requestor.categories.find(function (x) { return x === domain.category; });
+                        if (typeof category === 'undefined') {
+                            requestor.categories.push(domain.category);
+                        }
                     }
                 }
                 ++domain.totalRequests;

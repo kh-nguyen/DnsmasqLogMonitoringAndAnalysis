@@ -13,9 +13,24 @@
         <div class="col-xs-12">
             <fieldset>
                 <legend><span class="glyphicon glyphicon-cog" aria-hidden="true"></span> Settings</legend>
-                <div>Raw Data Line Limit: <input ng-model="dnsmasq.dataOptions.limit" /></div>
-                <div>Local Domain Name: <input ng-model="DomainName" /></div>
-                <div>IP Address Resolver Url: <input ng-model="HostnameResolveUrl" /></div>
+                <div class="col-xs-12 col-md-6">
+                    <table class="table table-condensed table-bordered">
+                        <caption>Ignored Nodes</caption>
+                        <thead>
+                            <tr class="info"><th>IP Address</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="node in dnsmasq.ignores">
+                                <td ng-bind="node"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="col-xs-12 col-md-6">
+                    <div>Raw Data Line Limit: <input ng-model="dnsmasq.dataOptions.limit" /></div>
+                    <div>Local Domain Name: <input ng-model="DomainName" /></div>
+                    <div>IP Address Resolver Url: <input ng-model="HostnameResolveUrl" /></div>
+                </div>
             </fieldset>
         </div>
 
@@ -60,7 +75,7 @@
                                 </td>
                                 <td>
                                     <ul class="list-inline" ng-repeat="category in domain.categories">
-                                        <li ng-class="category != 'adware' ? 'text-warning' : ''" ng-bind="category"></li>
+                                        <li ng-class="dnsmasq.categoriesOptions.getClasses(category)" ng-bind="category"></li>
                                     </ul>
                                 </td>
                                 <td><span ng-bind="domain.requestors.length | number"></span></td>
@@ -172,7 +187,7 @@
                         </thead>
                         <tbody ng-hide="dnsmasq.categoriesOptions.hidden">
                             <tr ng-repeat="category in dnsmasq.categories | orderBy:dnsmasq.categoriesOptions.orderBy:dnsmasq.categoriesOptions.orderReverse">
-                                <td ng-bind="category.name"></td>
+                                <td ng-class="dnsmasq.categoriesOptions.getClasses(category.name)" ng-bind="category.name"></td>
                                 <td ng-bind="category.data | keylength | number"></td>
                             </tr>
                         </tbody>
@@ -197,6 +212,7 @@
                             <tr class="info">
                                 <th sort-direction options="dnsmasq.queriesOptions" order-by="hostname" title="Node"></th>
                                 <th sort-direction options="dnsmasq.queriesOptions" order-by="key" title="IP Address"></th>
+                                <th sort-direction options="dnsmasq.queriesOptions" order-by="categories" title="Categories"></th>
                                 <th sort-direction options="dnsmasq.queriesOptions" order-by="totalTopDomains" title="Top Domains"></th>
                                 <th sort-direction options="dnsmasq.queriesOptions" order-by="totalDomains" title="Sub Domains"></th>
                                 <th sort-direction options="dnsmasq.queriesOptions" order-by="totalRequests" title="Requests"></th>
@@ -210,13 +226,18 @@
                                     <span ng-bind="node.hostname ? node.hostname : node.key"></span>
                                 </td>
                                 <td ng-bind="node.key"></td>
+                                <td>
+                                    <ul class="list-inline" ng-repeat="category in node.categories">
+                                        <li ng-class="dnsmasq.categoriesOptions.getClasses(category)" ng-bind="category"></li>
+                                    </ul>
+                                </td>
                                 <td><span ng-bind="node.totalTopDomains | number" class="update-item value-{{node.totalTopDomains}}"></span></td>
                                 <td><span ng-bind="node.totalDomains | number" class="update-item value-{{node.totalDomains}}"></span></td>
                                 <td><span ng-bind="node.totalRequests | number" class="update-item value-{{node.totalRequests}}"></span></td>
                                 <td title="{{node.lastRequestTime}}" am-time-ago="node.lastRequestTime"></td>
                             </tr>
                             <tr ng-repeat-end ng-hide="node.hidden && !dnsmasq.queriesOptions.expandAll">
-                                <td colspan="6">
+                                <td colspan="7">
                                     <table class="table table-condensed table-bordered">
                                         <thead>
                                             <tr class="warning">

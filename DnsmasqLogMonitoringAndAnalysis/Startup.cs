@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -35,10 +36,9 @@ namespace DnsmasqLogMonitoringAndAnalysis
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
-            if (env.IsDevelopment())
-            {
+            if (env.IsDevelopment()) {
                 app.UseDeveloperExceptionPage();
             }
 
@@ -49,6 +49,9 @@ namespace DnsmasqLogMonitoringAndAnalysis
             });
 
             app.UseMvc();
+
+            log4net.GlobalContext.Properties["LogFileName"] = LogMessageRelay.GetLogFilePath();
+            loggerFactory.AddLog4Net();
 
             var listernPort = Environment.GetEnvironmentVariable("DnsmasqDataPort");
             if (string.IsNullOrEmpty(listernPort))
@@ -61,36 +64,38 @@ namespace DnsmasqLogMonitoringAndAnalysis
 
     public class LogMessageRelay
     {
-        // Stores the messages received since the app started
-        public static Queue<string> LoggedMessages = new Queue<string>();
-
-        // the max number of messages are allowed in the LoggedMessages list
-        private readonly int LoggedMessagesMaxSize = 100000;
-
         private readonly IHubContext<DnsmasqQueriesHub> hubContext;
+
+        public static string GetLogFilePath()
+        {
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "log.txt");
+        }
+
+        public static string[] OldData {
+            get {
+                var path = GetLogFilePath();
+
+                if (File.Exists(path))
+                    return File.ReadAllLines(path);
+
+                return null;
+            }
+        }
 
         public LogMessageRelay(IHubContext<DnsmasqQueriesHub> hubContext)
         {
             this.hubContext = hubContext;
-
-            var loggedMessagesMaxSize = Environment.GetEnvironmentVariable("LoggedMessagesMaxSize");
-            if (!string.IsNullOrEmpty(loggedMessagesMaxSize))
-                int.TryParse(loggedMessagesMaxSize, out LoggedMessagesMaxSize);
         }
 
         public void Listen(int port)
         {
             Task.Factory.StartNew(() => {
-                while (true)
-                {
-                    try
-                    {
-                        using (var client = new UdpClient(port))
-                        {
+                while (true) {
+                    try {
+                        using (var client = new UdpClient(port)) {
                             var sender = new IPEndPoint(IPAddress.Any, 0);
 
-                            while (true)
-                            {
+                            while (true) {
                                 var buffer = client.Receive(ref sender);
 
                                 // Client is set to null when the UdpClient is disposed
@@ -100,24 +105,21 @@ namespace DnsmasqLogMonitoringAndAnalysis
 
                                 var stringLoggingEvent = System.Text.Encoding.Default.GetString(buffer);
 
-                                using (StringReader reader = new StringReader(stringLoggingEvent))
-                                {
+                                using (StringReader reader = new StringReader(stringLoggingEvent)) {
                                     string line = string.Empty;
 
-                                    while ((line = reader.ReadLine()) != null)
-                                    {
+                                    while ((line = reader.ReadLine()) != null) {
                                         hubContext.Clients.All.SendAsync("loggedEvent", line);
 
-                                        if (LoggedMessages.Count >= LoggedMessagesMaxSize)
-                                            LoggedMessages.Dequeue();
-                                        LoggedMessages.Enqueue(line);
+                                        log4net.LogManager.GetLogger(System.Reflection
+                                            .MethodBase.GetCurrentMethod().DeclaringType)
+                                            .Info(line);
                                     }
                                 }
                             }
                         }
                     }
-                    catch (Exception)
-                    {
+                    catch (Exception) {
                         Thread.Sleep(1000);
                     }
                 }
