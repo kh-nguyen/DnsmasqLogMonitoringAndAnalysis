@@ -8,7 +8,7 @@
         $.extend($scope, model);
 
         var dnsmasq = $scope.dnsmasq = {};
-        $.extend(dnsmasq, {
+        $.extend(true, dnsmasq, {
             startTime: new Date(),
             limits: [5, 10, 20, 50, 100, 200, 500, 1000],
             ignores: ['0.0.0.0'], // network nodes to be ignored
@@ -76,11 +76,11 @@
                 }
             },
             data: [],
-            dataOptions: { hidden: false, orderBy: 'time', orderReverse: false, limit: 100 },
+            dataOptions: { hidden: false, orderBy: 'time', orderReverse: false, limit: 100, count: 0 },
             queries: [],
             queriesOptions: { hidden: false, orderBy: 'hostname', orderReverse: false },
             resolvers: [],
-            resolversOptions: { hidden: true, orderBy: 'key', orderReverse: false },
+            resolversOptions: { hidden: true, orderBy: 'key', orderReverse: false, sum: { totalRequests: 0 } },
             domains: [],
             domainsOptions: { hidden: true, orderBy: 'lastRequestTime', orderReverse: true, limitTo: 10, page: 1 },
             isNonRoutableRequest: function (query) {
@@ -176,6 +176,7 @@
                     $scope.networkResolve(loggedEvent.resolver, resolver);
                 }
                 ++resolver.totalRequests;
+                ++dnsmasq.resolversOptions.sum.totalRequests;
 
                 var categories = topDomain.categories;
                 topDomain = dnsmasq.domains.find(function (x) { return x.key === topDomainKey; });
@@ -243,6 +244,8 @@
                 $scope.$apply(function () {
                     data.push(row);
                 });
+
+                ++options.count;
             }
         }, model.dnsmasq);
 
@@ -280,7 +283,7 @@
 
             var split = line.split(' ')
                 // remove null, undefined and empty
-                .filter(function (e) { return e === 0 || e });
+                .filter(function (e) { return e === 0 || e; });
             var baseIndex = 4;
 
             if (split.length <= baseIndex) {
