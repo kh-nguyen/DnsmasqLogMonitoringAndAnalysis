@@ -13,11 +13,11 @@
             limits: [5, 10, 20, 50, 100, 200, 500, 1000],
             ignores: ['0.0.0.0'], // network nodes to be ignored
             categories: [
-                { name: 'adware', data: {}, count: 0, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' },
-                { name: 'fakenews', classes: 'text-danger', data: {}, count: 0, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/fakenews/hosts' },
-                { name: 'gambling', classes: 'text-danger', data: {}, count: 0, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/gambling/hosts' },
-                { name: 'porn', classes: 'text-danger', data: {}, count: 0, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/porn/clefspeare13/hosts' },
-                { name: 'social', classes: 'text-warning', data: {}, count: 0, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/social/sinfonietta/hosts' }
+                { name: 'adware', expand: { hidden: true, sort: { orderBy: 'key', orderReverse: false }, limit: 20 }, data: {}, count: 0, matches: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' },
+                { name: 'fakenews', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'key', orderReverse: false }, limit: 20 }, data: {}, count: 0, matches: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/fakenews/hosts' },
+                { name: 'gambling', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'key', orderReverse: false }, limit: 20 }, data: {}, count: 0, matches: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/gambling/hosts' },
+                { name: 'porn', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'key', orderReverse: false }, limit: 20 }, data: {}, count: 0, matches: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/porn/clefspeare13/hosts' },
+                { name: 'social', classes: 'text-warning', expand: { hidden: true, sort: { orderBy: 'key', orderReverse: false }, limit: 20 }, data: {}, count: 0, matches: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/social/sinfonietta/hosts' }
             ],
             categoriesOptions: {
                 hidden: false,
@@ -60,7 +60,7 @@
                         if (data[obj.domain] === true) {
                             obj.category = category.name;
                             ++category.count;
-                            return true;
+                            return category;
                         }
                     }
 
@@ -82,6 +82,11 @@
                 orderBy: 'time',
                 orderReverse: false,
                 limit: 100,
+                applyLimit: function () {
+                    while (dnsmasq.data.length > dnsmasq.dataOptions.limit) {
+                        dnsmasq.data.shift();
+                    }
+                },
                 count: 0,
                 chart: {
                     show: true,
@@ -144,7 +149,7 @@
             resolvers: [],
             resolversOptions: { hidden: false, orderBy: 'key', orderReverse: false, sum: { totalRequests: 0 } },
             domains: [],
-            domainsOptions: { hidden: true, orderBy: 'lastRequestTime', orderReverse: true, limitTo: 10, page: 1 },
+            domainsOptions: { hidden: false, orderBy: 'lastRequestTime', orderReverse: true, limitTo: 5, page: 1 },
             isNonRoutableRequest: function (query) {
                 return typeof query.ipaddress === 'undefined'
                     || query.ipaddress === '0.0.0.0'
@@ -203,7 +208,8 @@
                     ++requestor.totalDomains;
                 }
                 $.extend(domain, loggedEvent);
-                if (dnsmasq.categoriesOptions.add(domain)) {
+                var categoryObj = dnsmasq.categoriesOptions.add(domain);
+                if (typeof categoryObj === 'object') {
                     var category = topDomain.categories.find(function (x) { return x === domain.category; });
                     if (typeof category === 'undefined') {
                         topDomain.categories.push(domain.category);
@@ -277,6 +283,12 @@
                     var topDomainRequestors = topDomain.requestors.find(function (x) { return x === loggedEvent.requestor; });
                     if (typeof topDomainRequestors === 'undefined') {
                         topDomain.requestors.push(loggedEvent.requestor);
+                    }
+                }
+                if (typeof categoryObj === 'object') {
+                    var match = categoryObj.matches.find(function (x) { return x.key === loggedEvent.domain; });
+                    if (typeof match === 'undefined') {
+                        categoryObj.matches.push(domain);
                     }
                 }
                 ++requestor.totalRequests;

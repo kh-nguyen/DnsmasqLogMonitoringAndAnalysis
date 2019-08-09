@@ -1,7 +1,7 @@
 ﻿<div class="content-wrapper container-fluid dnsmasq">
     <h3>
         Dnsmasq Log Monitoring And Analysis
-        <mark ng-show="dnsmasq.dataOptions.pause"> pausing...</mark>
+        <mark ng-if="dnsmasq.dataOptions.pause"> pausing...</mark>
         <span class="pull-right">
             <a ng-click="dnsmasq.dataOptions.pause = !dnsmasq.dataOptions.pause"><span class="glyphicon" ng-class="dnsmasq.dataOptions.pause ? 'glyphicon-play' : 'glyphicon-pause'" aria-hidden="true"></span></a>
             <a ng-click="dnsmasq.dataOptions.settings = !dnsmasq.dataOptions.settings"><span class="glyphicon glyphicon-cog" aria-hidden="true"></span></a>
@@ -9,7 +9,7 @@
         </span>
     </h3>
 
-    <div class="row" ng-show="dnsmasq.dataOptions.settings">
+    <div class="row" ng-if="dnsmasq.dataOptions.settings">
         <div class="col-xs-12">
             <fieldset>
                 <legend><span class="glyphicon glyphicon-cog" aria-hidden="true"></span> Settings</legend>
@@ -27,7 +27,6 @@
                     </table>
                 </div>
                 <div class="col-xs-12 col-md-6">
-                    <div>Raw Data Line Limit: <input ng-model="dnsmasq.dataOptions.limit" /></div>
                     <div>Local Domain Name: <input ng-model="DomainName" /></div>
                     <div>IP Address Resolver Url: <input ng-model="HostnameResolveUrl" /></div>
                 </div>
@@ -46,7 +45,7 @@
 
         <div class="col-xs-12">
             <div class="row">
-                <div class="col-xs-12 col-md-5">
+                <div class="col-xs-12">
                     <table class="table table-condensed table-bordered">
                         <caption>
                             <span toggle-hidden options="dnsmasq.domainsOptions"></span>
@@ -145,7 +144,7 @@
                     </table>
                 </div>
 
-                <div class="col-xs-12 col-md-4">
+                <div class="col-xs-12 col-md-6">
                     <table class="table table-condensed table-bordered">
                         <caption>
                             <span toggle-hidden options="dnsmasq.resolversOptions"></span>
@@ -178,7 +177,7 @@
                     </table>
                 </div>
 
-                <div class="col-xs-12 col-md-3">
+                <div class="col-xs-12 col-md-6">
                     <table class="table table-condensed table-bordered">
                         <caption>
                             <span toggle-hidden options="dnsmasq.categoriesOptions"></span>
@@ -188,14 +187,51 @@
                             <tr class="info">
                                 <th sort-direction options="dnsmasq.categoriesOptions" order-by="name" title="Name"></th>
                                 <th sort-direction options="dnsmasq.categoriesOptions" order-by="count" title="DB Count"></th>
-                                <th sort-direction options="dnsmasq.categoriesOptions" order-by="encounter" title="Encounter"></th>
+                                <th sort-direction options="dnsmasq.categoriesOptions" order-by="matches.length" title="Matched"></th>
                             </tr>
                         </thead>
                         <tbody ng-if="!dnsmasq.categoriesOptions.hidden">
-                            <tr ng-repeat="category in dnsmasq.categories | orderBy:dnsmasq.categoriesOptions.orderBy:dnsmasq.categoriesOptions.orderReverse">
-                                <td ng-class="dnsmasq.categoriesOptions.getClasses(category.name)" ng-bind="category.name"></td>
+                            <tr ng-repeat-start="category in dnsmasq.categories | orderBy:dnsmasq.categoriesOptions.orderBy:dnsmasq.categoriesOptions.orderReverse">
+                                <td>
+                                    <a ng-click="category.expand.hidden = !category.expand.hidden"><span class="glyphicon" ng-class="category.expand.hidden ? 'glyphicon-triangle-right' : 'glyphicon-triangle-bottom'" aria-hidden="true"></span></a>
+                                    <span ng-class="dnsmasq.categoriesOptions.getClasses(category.name)" ng-bind="category.name"></span>
+                                </td>
                                 <td ng-bind="category.data | keylength | number"></td>
-                                <td ng-bind="category.count | number"></td>
+                                <td><span ng-bind="category.count | number" class="update-item value-{{category.count}}"></span></td>
+                            </tr>
+                            <tr ng-repeat-end ng-if="!category.expand.hidden">
+                                <td colspan="3">
+                                    <table class="table table-condensed table-bordered">
+                                        <thead>
+                                            <tr class="warning">
+                                                <th sort-direction options="category.expand.sort" order-by="key" title="Domain"></th>
+                                                <th sort-direction options="category.expand.sort" order-by="totalRequests" title="Requests"></th>
+                                                <th sort-direction options="category.expand.sort" order-by="lastRequestTime" title="Last Time"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr ng-repeat="domain in category.matches | orderBy:category.expand.sort.orderBy:category.expand.sort.orderReverse | limitTo: category.expand.limit" class="animate-row">
+                                                <td><span ng-bind="domain.key"></span></td>
+                                                <td><span ng-bind="domain.totalRequests | number" class="update-item value-{{domain.totalRequests}}"></span></td>
+                                                <td title="{{domain.lastRequestTime}}" am-time-ago="domain.lastRequestTime"></td>
+                                            </tr>
+                                            <tr>
+                                                <td colspan="3">
+                                                    <div class="row">
+                                                        <div class="col-xs-4"></div>
+                                                        <div class="col-xs-4">
+                                                            <select ng-options="limit for limit in dnsmasq.limits"
+                                                                    ng-model="category.expand.limit"></select>
+                                                        </div>
+                                                        <div class="col-xs-4">
+                                                            <span class="pull-right">View <span ng-bind="category.matches.length <= category.expand.limit ? category.matches.length : category.expand.limit"></span> of <span ng-bind="category.matches.length | number"></span></span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -207,7 +243,7 @@
                     <table class="table table-condensed table-bordered">
                         <caption>
                             <span toggle-hidden options="dnsmasq.queriesOptions"></span>
-                            DNS Queries Summary
+                            Clients
                             <span class="pull-right">
                                 <a title="Expand All" ng-click="dnsmasq.queriesOptions.expandAll = !dnsmasq.queriesOptions.expandAll"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.expandAll ? 'glyphicon-minus' : 'glyphicon-plus'" aria-hidden="true"></span></a>
                                 <a ng-click="dnsmasq.queriesOptions.searchShow = !dnsmasq.queriesOptions.searchShow" title="Search"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
@@ -324,8 +360,12 @@
                             </select>
                         </span>
                         <a ng-click="dnsmasq.dataOptions.searchShow = !dnsmasq.dataOptions.searchShow" title="Search"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
-                        <input placeholder="search" ng-show="dnsmasq.dataOptions.searchShow" ng-model="dnsmasq.dataOptions.search" />
-                        Limit: <span ng-bind="dnsmasq.data | keylength | number"></span>
+                        <input placeholder="search" ng-if="dnsmasq.dataOptions.searchShow" ng-model="dnsmasq.dataOptions.search" />
+                        Limit:
+                        <select ng-options="limit for limit in dnsmasq.limits"
+                                ng-model="dnsmasq.dataOptions.limit"
+                                ng-change="dnsmasq.dataOptions.applyLimit()"
+                                title="Raw data storage size limit"></select>
                     </span>
                     <canvas real-time-data-chart ng-if="dnsmasq.dataOptions.chart.show" style="width: 800px; height: 200px"></canvas>
                 </caption>
