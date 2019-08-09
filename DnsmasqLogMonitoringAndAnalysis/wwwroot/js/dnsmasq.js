@@ -463,7 +463,7 @@
 
         // load old data if any
         $timeout(function () {
-            if (typeof model.OldData === 'undefined') {
+            if (model.OldData === null || typeof model.OldData === 'undefined') {
                 return;
             }
 
