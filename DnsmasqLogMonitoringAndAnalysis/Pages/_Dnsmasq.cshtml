@@ -46,7 +46,7 @@
 
         <div class="col-xs-12">
             <div class="row">
-                <div class="col-xs-12 col-md-6">
+                <div class="col-xs-12 col-md-5">
                     <table class="table table-condensed table-bordered">
                         <caption>
                             <span toggle-hidden options="dnsmasq.domainsOptions"></span>
@@ -159,27 +159,26 @@
                         <thead ng-if="!dnsmasq.resolversOptions.hidden">
                             <tr class="info">
                                 <th sort-direction options="dnsmasq.resolversOptions" order-by="key" title="Resolver"></th>
-                                <th sort-direction options="dnsmasq.resolversOptions" order-by="hostname" title="Hostname"></th>
-                                <th sort-direction options="dnsmasq.resolversOptions" order-by="totalRequests" title="Requests"></th>
+                                <th colspan="2" sort-direction options="dnsmasq.resolversOptions" order-by="totalRequests" title="Requests"></th>
                             </tr>
                         </thead>
                         <tbody ng-if="!dnsmasq.resolversOptions.hidden">
                             <tr ng-repeat="resolver in dnsmasq.resolvers | filter:dnsmasq.resolversOptions.search | orderBy:dnsmasq.resolversOptions.orderBy:dnsmasq.resolversOptions.orderReverse" class="animate-row">
-                                <td ng-bind="resolver.key"></td>
-                                <td ng-bind="resolver.hostname ? resolver.hostname : resolver.key"></td>
+                                <td><span ng-bind="resolver.key"></span><span ng-if="resolver.key != resolver.hostname">&nbsp;<span ng-bind="resolver.hostname"></span></span></td>
                                 <td><span ng-bind="resolver.totalRequests | number" class="update-item value-{{resolver.totalRequests}}"></span></td>
+                                <td><span ng-bind="(resolver.totalRequests / dnsmasq.resolversOptions.sum.totalRequests) * 100 | number:2"></span>%</td>
                             </tr>
                         </tbody>
                         <tfoot ng-if="!dnsmasq.resolversOptions.hidden">
                             <tr>
-                                <td colspan="2" align="right">Total:</td>
-                                <td><span ng-bind="dnsmasq.resolversOptions.sum.totalRequests | number" class="update-item value-{{dnsmasq.resolversOptions.sum.totalRequests}}"></span></td>
+                                <td align="right">Total:</td>
+                                <td colspan="2"><span ng-bind="dnsmasq.resolversOptions.sum.totalRequests | number" class="update-item value-{{dnsmasq.resolversOptions.sum.totalRequests}}"></span></td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
 
-                <div class="col-xs-12 col-md-2">
+                <div class="col-xs-12 col-md-3">
                     <table class="table table-condensed table-bordered">
                         <caption>
                             <span toggle-hidden options="dnsmasq.categoriesOptions"></span>
@@ -188,13 +187,15 @@
                         <thead ng-if="!dnsmasq.categoriesOptions.hidden">
                             <tr class="info">
                                 <th sort-direction options="dnsmasq.categoriesOptions" order-by="name" title="Name"></th>
-                                <th sort-direction options="dnsmasq.categoriesOptions" order-by="count" title="Count"></th>
+                                <th sort-direction options="dnsmasq.categoriesOptions" order-by="count" title="DB Count"></th>
+                                <th sort-direction options="dnsmasq.categoriesOptions" order-by="encounter" title="Encounter"></th>
                             </tr>
                         </thead>
                         <tbody ng-if="!dnsmasq.categoriesOptions.hidden">
                             <tr ng-repeat="category in dnsmasq.categories | orderBy:dnsmasq.categoriesOptions.orderBy:dnsmasq.categoriesOptions.orderReverse">
                                 <td ng-class="dnsmasq.categoriesOptions.getClasses(category.name)" ng-bind="category.name"></td>
                                 <td ng-bind="category.data | keylength | number"></td>
+                                <td ng-bind="category.count | number"></td>
                             </tr>
                         </tbody>
                     </table>
@@ -311,12 +312,22 @@
             <table class="table table-condensed table-bordered">
                 <caption>
                     <a ng-click="dnsmasq.dataOptions.hidden = !dnsmasq.dataOptions.hidden"><span class="glyphicon" ng-class="dnsmasq.dataOptions.hidden ? 'glyphicon-triangle-right' : 'glyphicon-triangle-bottom'" aria-hidden="true"></span></a>
-                    Raw Data: <span ng-bind="dnsmasq.dataOptions.count | number" title="Total number of processed lines"></span>
+                    Raw Data:
+                    <span ng-bind="dnsmasq.dataOptions.count | number" title="Total number of processed lines"></span>
                     <span class="pull-right">
+                        <a ng-click="dnsmasq.dataOptions.chart.show = !dnsmasq.dataOptions.chart.show" title="Chart"><span class="glyphicon glyphicon glyphicon-signal" aria-hidden="true"></span></a>
+                        <span ng-if="dnsmasq.dataOptions.chart.show">
+                            Duration:
+                            <select ng-change="dnsmasq.dataOptions.chart.element.update({ duration: 0 })"
+                                    ng-model="dnsmasq.dataOptions.chart.element.options.scales.xAxes[0].realtime.duration">
+                                <option ng-repeat="duration in dnsmasq.dataOptions.chart.durations" value="{{duration.value}}" ng-bind="duration.name"></option>
+                            </select>
+                        </span>
                         <a ng-click="dnsmasq.dataOptions.searchShow = !dnsmasq.dataOptions.searchShow" title="Search"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
                         <input placeholder="search" ng-show="dnsmasq.dataOptions.searchShow" ng-model="dnsmasq.dataOptions.search" />
                         Limit: <span ng-bind="dnsmasq.data | keylength | number"></span>
                     </span>
+                    <canvas real-time-data-chart ng-if="dnsmasq.dataOptions.chart.show" style="width: 800px; height: 200px"></canvas>
                 </caption>
                 <thead ng-if="!dnsmasq.dataOptions.hidden">
                     <tr class="info">

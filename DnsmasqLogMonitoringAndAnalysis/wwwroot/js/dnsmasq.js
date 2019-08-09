@@ -13,14 +13,14 @@
             limits: [5, 10, 20, 50, 100, 200, 500, 1000],
             ignores: ['0.0.0.0'], // network nodes to be ignored
             categories: [
-                { name: 'adware', data: {}, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' },
-                { name: 'fakenews', classes: 'text-danger', data: {}, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/fakenews/hosts' },
-                { name: 'gambling', classes: 'text-danger', data: {}, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/gambling/hosts' },
-                { name: 'porn', classes: 'text-danger', data: {}, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/porn/clefspeare13/hosts' },
-                { name: 'social', classes: 'text-warning', data: {}, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/social/sinfonietta/hosts' }
+                { name: 'adware', data: {}, count: 0, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' },
+                { name: 'fakenews', classes: 'text-danger', data: {}, count: 0, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/fakenews/hosts' },
+                { name: 'gambling', classes: 'text-danger', data: {}, count: 0, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/gambling/hosts' },
+                { name: 'porn', classes: 'text-danger', data: {}, count: 0, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/porn/clefspeare13/hosts' },
+                { name: 'social', classes: 'text-warning', data: {}, count: 0, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/social/sinfonietta/hosts' }
             ],
             categoriesOptions: {
-                hidden: true,
+                hidden: false,
                 orderBy: 'hostname',
                 orderReverse: false,
                 load: function () {
@@ -59,6 +59,7 @@
 
                         if (data[obj.domain] === true) {
                             obj.category = category.name;
+                            ++category.count;
                             return true;
                         }
                     }
@@ -76,11 +77,72 @@
                 }
             },
             data: [],
-            dataOptions: { hidden: false, orderBy: 'time', orderReverse: false, limit: 100, count: 0 },
+            dataOptions: {
+                hidden: true,
+                orderBy: 'time',
+                orderReverse: false,
+                limit: 100,
+                count: 0,
+                chart: {
+                    show: true,
+                    durations: [
+                        { name: '15 seconds', value: 15 * 1000 },
+                        { name: '30 seconds', value: 30 * 1000 },
+                        { name: '1 minute', value: 60 * 1000 },
+                        { name: '5 minutes', value: 5 * 60 * 1000 },
+                        { name: '15 minutes', value: 15 * 60 * 1000 },
+                        { name: '30 minutes', value: 30 * 60 * 1000 },
+                        { name: '45 minutes', value: 45 * 60 * 1000 },
+                        { name: '1 hour', value: 60 * 60 * 1000 },
+                        { name: '2 hours', value: 2 * 60 * 60 * 1000 }
+                    ],
+                    initialize: function () {
+                        var $self = this;
+
+                        setInterval(function () {
+                            var data = $self.next();
+
+                            $.each(data, function (index, value) {
+                                $self.datasets[index].data.push(value);
+                            });
+
+                            if ($self.show === true) {
+                                $self.element.update({ preservation: true });
+                            }
+                        }, 1000);
+                    },
+                    datasets: [
+                        {
+                            data: [],
+                            label: 'Raw',
+                            lineTension: 0,
+                            borderColor: 'rgb(54, 162, 235)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)'
+                        }, {
+                            data: [],
+                            label: 'Queries',
+                            lineTension: 0,
+                            borderColor: 'rgb(54, 62, 135)',
+                            backgroundColor: 'rgba(54, 62, 135, 0.5)'
+                        }
+                    ],
+                    next: function () {
+                        var entry = [];
+
+                        entry.push({ x: new Date().getTime(), y: this.current.raw });
+                        entry.push({ x: new Date().getTime(), y: this.current.queries });
+
+                        this.current = { raw: 0, queries: 0 };
+
+                        return entry;
+                    },
+                    current: { raw: 0, queries: 0 }
+                }
+            },
             queries: [],
-            queriesOptions: { hidden: false, orderBy: 'hostname', orderReverse: false },
+            queriesOptions: { hidden: true, orderBy: 'hostname', orderReverse: false },
             resolvers: [],
-            resolversOptions: { hidden: true, orderBy: 'key', orderReverse: false, sum: { totalRequests: 0 } },
+            resolversOptions: { hidden: false, orderBy: 'key', orderReverse: false, sum: { totalRequests: 0 } },
             domains: [],
             domainsOptions: { hidden: true, orderBy: 'lastRequestTime', orderReverse: true, limitTo: 10, page: 1 },
             isNonRoutableRequest: function (query) {
@@ -236,6 +298,7 @@
             dataAdd: function (row) {
                 var data = dnsmasq.data;
                 var options = dnsmasq.dataOptions;
+                var chartData = dnsmasq.dataOptions.chart;
 
                 if (typeof options.limit !== 'undefined' && data.length >= options.limit) {
                     data.shift();
@@ -246,6 +309,16 @@
                 });
 
                 ++options.count;
+
+                if (typeof chartData === 'object') {
+                    ++chartData.current.raw;
+
+                    var message = row.message;
+
+                    if (message.startsWith('query')) {
+                        ++chartData.current.queries;
+                    }
+                }
             }
         }, model.dnsmasq);
 
@@ -273,6 +346,8 @@
 
         // load category lists
         dnsmasq.categoriesOptions.load();
+
+        dnsmasq.dataOptions.chart.initialize();
 
         var query = null;
 
@@ -408,6 +483,46 @@
             }, 5);
         });
     }]);
+
+    System.angular.directive('realTimeDataChart', function () {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attr) {
+                var options = scope.$eval(attr.realTimeDataChart);
+                var chartData = scope.dnsmasq.dataOptions.chart;
+
+                options = $.extend({
+                    scales: {
+                        xAxes: [{
+                            type: 'realtime',
+                            realtime: {
+                                duration: 15000,
+                                refresh: 1000,
+                                delay: 1000,
+                                pause: false,
+                                ttl: undefined
+                            }
+                        }]
+                    },
+                    tooltips: {
+                        mode: 'nearest',
+                        intersect: false
+                    },
+                    hover: {
+                        mode: 'nearest',
+                        intersect: false
+                    },
+                    plugins: { streaming: { frameRate: 30 } }
+                }, options);
+
+                chartData.element = new Chart(element[0], {
+                    type: 'line',
+                    data: chartData,
+                    options: options
+                });
+            }
+        };
+    });
 
     System.angular.directive('sortDirection', function () {
         return {
