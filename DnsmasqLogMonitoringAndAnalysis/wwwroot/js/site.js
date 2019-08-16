@@ -40,11 +40,23 @@
 
     var connection = new signalR.HubConnectionBuilder().withUrl("/dnsmasq").build();
 
-    connection.start().catch(function (err) {
-        return console.error(err.toString());
+    async function start() {
+        try {
+            await connection.start();
+            console.log("connected");
+        } catch (err) {
+            console.log(err);
+            setTimeout(() => start(), 2000);
+        }
+    }
+
+    connection.onclose(async () => {
+        await start();
     });
 
     connection.on("loggedEvent", System.loggedEvent);
+
+    start();
 
     // add support for method startsWith which is not available in IE browsers
     if (!String.prototype.startsWith) {
