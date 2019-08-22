@@ -12,17 +12,16 @@
             startTime: new Date(),
             limits: [5, 10, 20, 50, 100, 200, 500, 1000],
             ignores: ['0.0.0.0'], // network nodes to be ignored
+            hostnames: {}, // resolved hostnames cache
             categories: [
-                { name: 'adware', expand: { hidden: true, sort: { orderBy: 'key', orderReverse: false }, limit: 20 }, data: {}, count: 0, matches: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' },
-                { name: 'fakenews', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'key', orderReverse: false }, limit: 20 }, data: {}, count: 0, matches: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/fakenews/hosts' },
-                { name: 'gambling', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'key', orderReverse: false }, limit: 20 }, data: {}, count: 0, matches: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/gambling/hosts' },
-                { name: 'porn', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'key', orderReverse: false }, limit: 20 }, data: {}, count: 0, matches: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/porn/clefspeare13/hosts' },
-                { name: 'social', classes: 'text-warning', expand: { hidden: true, sort: { orderBy: 'key', orderReverse: false }, limit: 20 }, data: {}, count: 0, matches: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/social/sinfonietta/hosts' }
+                { name: 'adware', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, count: 0, matches: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' },
+                { name: 'fakenews', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, count: 0, matches: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/fakenews/hosts' },
+                { name: 'gambling', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, count: 0, matches: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/gambling/hosts' },
+                { name: 'porn', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, count: 0, matches: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/porn/clefspeare13/hosts' },
+                { name: 'social', classes: 'text-warning', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, count: 0, matches: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/social/sinfonietta/hosts' }
             ],
             categoriesOptions: {
-                hidden: false,
-                orderBy: 'hostname',
-                orderReverse: false,
+                expand: { hidden: false, sort: { orderBy: 'name', orderReverse: false } },
                 load: function () {
                     $.each(dnsmasq.categories, function (index, value) {
                         $.get(value.url, function (data) {
@@ -78,12 +77,9 @@
             },
             data: [],
             dataOptions: {
-                hidden: true,
-                orderBy: 'time',
-                orderReverse: false,
-                limit: 100,
+                expand: { hidden: true, sort: { orderBy: 'time', orderReverse: true }, limit: 100 },
                 applyLimit: function () {
-                    while (dnsmasq.data.length > dnsmasq.dataOptions.limit) {
+                    while (dnsmasq.data.length > dnsmasq.dataOptions.expand.limit) {
                         dnsmasq.data.shift();
                     }
                 },
@@ -145,19 +141,25 @@
                 }
             },
             queries: [],
-            queriesOptions: { hidden: true, orderBy: 'hostname', orderReverse: false },
+            queriesOptions: { expand: { hidden: true, sort: { orderBy: 'hostname', orderReverse: false } } },
             resolvers: [],
-            resolversOptions: { hidden: false, orderBy: 'key', orderReverse: false, sum: { totalRequests: 0 } },
+            resolversOptions: { expand: { hidden: false, sort: { orderBy: 'key', orderReverse: false } }, sum: { totalRequests: 0 } },
             domains: [],
-            domainsOptions: { hidden: false, orderBy: 'lastRequestTime', orderReverse: true, limitTo: 5, page: 1 },
+            domainsOptions: { expand: { hidden: false, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 5 } },
             isNonRoutableRequest: function (query) {
                 return typeof query.ipaddress === 'undefined'
                     || query.ipaddress === '0.0.0.0'
                     || query.ipaddress.indexOf('NXDOMAIN') === 0
                     || query.ipaddress.indexOf('NODATA') === 0;
             },
+            setHidden: function (nodes, value) {
+                $.each(nodes, function (index, node) {
+                    node.hidden = value;
+                });
+            },
             log: function (loggedEvent) {
                 var dnsmasq = $scope.dnsmasq;
+                var REQUESTOR_MAX_RECORDS = 100;
 
                 if ($.inArray($.trim(loggedEvent.requestor), dnsmasq.ignores) >= 0) {
                     return;
@@ -171,7 +173,7 @@
                 if (typeof requestor === 'undefined') {
                     requestor = {
                         key: loggedEvent.requestor,
-                        hidden: true,
+                        expand: { hidden: true, sort: { orderBy: 'key', orderReverse: true }, limit: 20 },
                         records: [],
                         totalTopDomains: 0,
                         totalDomains: 0,
@@ -190,7 +192,7 @@
                 if (typeof topDomain === 'undefined') {
                     topDomain = {
                         key: topDomainKey,
-                        hidden: true,
+                        expand: { hidden: true, sort: { orderBy: 'key', orderReverse: true }, limit: 20 },
                         records: [],
                         totalDomains: 0,
                         totalRequests: 0,
@@ -255,7 +257,7 @@
                         totalRequests: 0,
                         requestors: [],
                         records: [],
-                        hidden: true
+                        expand: { hidden: true, sort: { orderBy: 'key', orderReverse: true }, limit: 20 }
                     };
                     dnsmasq.domains.push(topDomain);
                 }
@@ -266,7 +268,7 @@
                         totalRequestors: 0,
                         totalRequests: 0,
                         records: [],
-                        hidden: true
+                        expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }
                     };
                     topDomain.records.push(domain);
                 }
@@ -275,10 +277,13 @@
                     requestor = {
                         key: loggedEvent.requestor,
                         totalRequests: 0,
-                        hidden: true
+                        records: [],
+                        expand: { hidden: true, sort: { orderBy: 'time', orderReverse: false }, limit: 20 }
                     };
                     domain.records.push(requestor);
                     ++domain.totalRequestors;
+
+                    $scope.networkResolve(loggedEvent.requestor, requestor);
 
                     var topDomainRequestors = topDomain.requestors.find(function (x) { return x === loggedEvent.requestor; });
                     if (typeof topDomainRequestors === 'undefined') {
@@ -297,6 +302,11 @@
                 if (typeof requestor.lastRequestTime === 'undefined' ||
                     requestor.lastRequestTime < loggedEvent.time) {
                     requestor.lastRequestTime = loggedEvent.time;
+
+                    if (requestor.records.length >= REQUESTOR_MAX_RECORDS) {
+                        requestor.records.shift();
+                    }
+                    requestor.records.push(loggedEvent);
                 }
                 if (typeof domain.lastRequestTime === 'undefined' ||
                     domain.lastRequestTime < loggedEvent.time) {
@@ -312,7 +322,7 @@
                 var options = dnsmasq.dataOptions;
                 var chartData = dnsmasq.dataOptions.chart;
 
-                if (typeof options.limit !== 'undefined' && data.length >= options.limit) {
+                if (typeof options.expand.limit !== 'undefined' && data.length >= options.expand.limit) {
                     data.shift();
                 }
 
@@ -341,15 +351,21 @@
                 return ipAddress;
             }
 
-            $.post($scope.HostnameResolveUrl + '/' + ipAddress, function (data) {
-                if (data !== null && data.endsWith($scope.DomainName)) {
-                    data = data.substring(0, data.length - $scope.DomainName.length - 1);
-                }
+            storageObject.hostname = dnsmasq.hostnames[ipAddress];
 
-                $scope.$apply(function () {
-                    storageObject.hostname = data;
+            if (typeof storageObject.hostname === 'undefined') {
+                $.post($scope.HostnameResolveUrl + '/' + ipAddress, function (data) {
+                    if (data !== null && data.endsWith($scope.DomainName)) {
+                        data = data.substring(0, data.length - $scope.DomainName.length - 1);
+                    }
+
+                    dnsmasq.hostnames[ipAddress] = data;
+
+                    $scope.$apply(function () {
+                        storageObject.hostname = data;
+                    });
                 });
-            });
+            }
 
             function isIP(ipaddress) {
                 return /^(?=\d+\.\d+\.\d+\.\d+$)(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[0-9])\.?){4}$/.test(ipaddress);
