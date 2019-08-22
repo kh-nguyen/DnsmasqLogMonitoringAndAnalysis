@@ -23,11 +23,17 @@
             categoriesOptions: {
                 expand: { hidden: false, sort: { orderBy: 'name', orderReverse: false } },
                 load: function () {
-                    $.each(dnsmasq.categories, function (index, value) {
-                        $.get(value.url, function (data) {
-                            loadCategory(data, value.data);
+                    loadCategories();
+
+                    setInterval(loadCategories, 1 * 24 * 60 * 60 * 1000 /* reload every day */);
+
+                    function loadCategories() {
+                        $.each(dnsmasq.categories, function (index, value) {
+                            $.get(value.url, function (data) {
+                                loadCategory(data, value.data);
+                            });
                         });
-                    });
+                    }
 
                     function loadCategory(data, dict) {
                         data = data.split('\n');
