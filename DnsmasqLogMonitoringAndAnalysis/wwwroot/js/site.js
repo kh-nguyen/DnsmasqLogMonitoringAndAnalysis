@@ -13,6 +13,11 @@
             return Object.keys(input).length;
         };
     }]);
+    System.angular.filter('html', ['$sce', function ($sce) {
+        return function (text) {
+            return $sce.trustAsHtml(text);
+        };
+    }]);
 
     System.loggedEvent = function (loggedEvent) {
         if (typeof loggedEvent === 'undefined') {

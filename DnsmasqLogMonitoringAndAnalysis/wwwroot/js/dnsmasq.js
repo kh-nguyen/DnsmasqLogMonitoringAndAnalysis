@@ -14,11 +14,11 @@
             ignores: ['0.0.0.0'], // network nodes to be ignored
             hostnames: {}, // resolved hostnames cache
             categories: [
-                { name: 'adware', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, count: 0, matches: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' },
-                { name: 'fakenews', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, count: 0, matches: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/fakenews/hosts' },
-                { name: 'gambling', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, count: 0, matches: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/gambling/hosts' },
-                { name: 'porn', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, count: 0, matches: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/porn/clefspeare13/hosts' },
-                { name: 'social', classes: 'text-warning', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, count: 0, matches: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/social/sinfonietta/hosts' }
+                { name: 'adware', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, records: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' },
+                { name: 'fakenews', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, records: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/fakenews/hosts' },
+                { name: 'gambling', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, records: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/gambling/hosts' },
+                { name: 'porn', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, records: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/porn/clefspeare13/hosts' },
+                { name: 'social', classes: 'text-warning', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, records: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/social/sinfonietta/hosts' }
             ],
             categoriesOptions: {
                 expand: { hidden: false, sort: { orderBy: 'name', orderReverse: false } },
@@ -64,7 +64,6 @@
 
                         if (data[obj.domain] === true) {
                             obj.category = category.name;
-                            ++category.count;
                             return category;
                         }
                     }
@@ -191,9 +190,7 @@
                     $scope.networkResolve(loggedEvent.requestor, requestor);
                 }
 
-                var domainComponents = loggedEvent.domain.split('.');
-                var topDomainKey = domainComponents[domainComponents.length - 2]
-                    + '.' + domainComponents[domainComponents.length - 1];
+                var topDomainKey = getTopDomain(loggedEvent.domain);
                 var topDomain = requestor.records.find(function (x) { return x.key === topDomainKey; });
                 if (typeof topDomain === 'undefined') {
                     topDomain = {
@@ -232,14 +229,8 @@
                 ++domain.totalRequests;
                 ++topDomain.totalRequests;
                 ++requestor.totalRequests;
-                if (typeof topDomain.lastRequestTime === 'undefined' ||
-                    topDomain.lastRequestTime < loggedEvent.time) {
-                    topDomain.lastRequestTime = loggedEvent.time;
-                }
-                if (typeof requestor.lastRequestTime === 'undefined' ||
-                    requestor.lastRequestTime < loggedEvent.time) {
-                    requestor.lastRequestTime = loggedEvent.time;
-                }
+                topDomain.lastRequestTime = loggedEvent.time;
+                requestor.lastRequestTime = loggedEvent.time;
 
                 var resolver = dnsmasq.resolvers.find(function (x) { return x.key === loggedEvent.resolver; });
                 if (typeof resolver === 'undefined') {
@@ -261,6 +252,7 @@
                         key: topDomainKey,
                         categories: categories,
                         totalRequests: 0,
+                        lastRequestTime: loggedEvent.time,
                         requestors: [],
                         records: [],
                         expand: { hidden: true, sort: { orderBy: 'key', orderReverse: true }, limit: 20 }
@@ -273,6 +265,7 @@
                         key: loggedEvent.domain,
                         totalRequestors: 0,
                         totalRequests: 0,
+                        lastRequestTime: loggedEvent.time,
                         records: [],
                         expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }
                     };
@@ -283,8 +276,9 @@
                     requestor = {
                         key: loggedEvent.requestor,
                         totalRequests: 0,
+                        lastRequestTime: loggedEvent.time,
                         records: [],
-                        expand: { hidden: true, sort: { orderBy: 'time', orderReverse: false }, limit: 20 }
+                        expand: { hidden: true, sort: { orderBy: 'time', orderReverse: true }, limit: 20 }
                     };
                     domain.records.push(requestor);
                     ++domain.totalRequestors;
@@ -297,30 +291,62 @@
                     }
                 }
                 if (typeof categoryObj === 'object') {
-                    var match = categoryObj.matches.find(function (x) { return x.key === loggedEvent.domain; });
-                    if (typeof match === 'undefined') {
-                        categoryObj.matches.push(domain);
+                    var catTopDomainName = getTopDomain(loggedEvent.domain);
+
+                    var catTopDomain = categoryObj.records.find(function (x) { return x.key === catTopDomainName; });
+                    if (typeof catTopDomain === 'undefined') {
+                        catTopDomain = {
+                            records: [],
+                            key: catTopDomainName,
+                            expand: { hidden: true, sort: { orderBy: 'time', orderReverse: true }, limit: 20 }
+                        };
+                        categoryObj.records.push(catTopDomain);
+                    }
+                    catTopDomain.lastRequestTime = loggedEvent.time;
+
+                    var catDomain = catTopDomain.records.find(function (x) { return x.key === loggedEvent.domain; });
+                    if (typeof catDomain === 'undefined') {
+                        catTopDomain.records.push(domain);
                     }
                 }
                 ++requestor.totalRequests;
                 ++domain.totalRequests;
                 ++topDomain.totalRequests;
-                if (typeof requestor.lastRequestTime === 'undefined' ||
-                    requestor.lastRequestTime < loggedEvent.time) {
+                if (requestor.lastRequestTime < loggedEvent.time) {
+                    var lastRequestTime = requestor.lastRequestTime;
+                    var currentRequestTime = loggedEvent.time;
                     requestor.lastRequestTime = loggedEvent.time;
 
-                    if (requestor.records.length >= REQUESTOR_MAX_RECORDS) {
-                        requestor.records.shift();
+                    var IsNewRecord = true;
+
+                    if (lastRequestTime instanceof Date) {
+                        lastRequestTime.setSeconds(0);
+                        lastRequestTime.setMilliseconds(0);
+                        currentRequestTime.setSeconds(0);
+                        currentRequestTime.setMilliseconds(0);
+
+                        IsNewRecord = lastRequestTime < currentRequestTime;
                     }
-                    requestor.records.push(loggedEvent);
+
+                    if (IsNewRecord === true) {
+                        if (requestor.records.length >= REQUESTOR_MAX_RECORDS) {
+                            requestor.records.shift();
+                        }
+                        requestor.records.push(loggedEvent);
+                    }
                 }
-                if (typeof domain.lastRequestTime === 'undefined' ||
-                    domain.lastRequestTime < loggedEvent.time) {
-                    domain.lastRequestTime = loggedEvent.time;
-                }
-                if (typeof topDomain.lastRequestTime === 'undefined' ||
-                    topDomain.lastRequestTime < loggedEvent.time) {
-                    topDomain.lastRequestTime = loggedEvent.time;
+                domain.lastRequestTime = loggedEvent.time;
+                topDomain.lastRequestTime = loggedEvent.time;
+
+                function getTopDomain(domain) {
+                    var domainComponents = domain.split('.');
+
+                    if (domainComponents.length <= 1) {
+                        return domain;
+                    }
+
+                    return domainComponents[domainComponents.length - 2]
+                        + '.' + domainComponents[domainComponents.length - 1];
                 }
             },
             dataAdd: function (row) {
@@ -359,7 +385,7 @@
 
             storageObject.hostname = dnsmasq.hostnames[ipAddress];
 
-            if (typeof storageObject.hostname === 'undefined') {
+            if (typeof storageObject.hostname === 'undefined' || isIP(storageObject.hostname)) {
                 $.post($scope.HostnameResolveUrl + '/' + ipAddress, function (data) {
                     if (data !== null && data.endsWith($scope.DomainName)) {
                         data = data.substring(0, data.length - $scope.DomainName.length - 1);
@@ -449,7 +475,7 @@
                 }
 
                 query = {};
-                query.type = cmd.substring(queryKey.length, cmd.length - queryKey.length - 1);
+                query.type = "query";
                 query.time = timestamp;
                 query.domain = split[baseIndex + 1];
                 query.requestor = split[baseIndex + 3];
@@ -516,6 +542,13 @@
                 }
             }, 5);
         });
+
+        // query for the updated host name of the clients every 15 minutes
+        setInterval(function () {
+            $.each(dnsmasq.queries, function (index, client) {
+                $scope.networkResolve(client.key, client);
+            });
+        }, 15 * 60 * 1000);
     }]);
 
     System.angular.directive('realTimeDataChart', function () {
@@ -585,6 +618,15 @@
             restrict: 'A',
             scope: { options: '=' },
             template: "<a ng-click=\"options.hidden = !options.hidden\"><span class=\"glyphicon\" ng-class=\"options.hidden ? 'glyphicon-triangle-right' : 'glyphicon-triangle-bottom'\" aria-hidden=\"true\"></span></a>"
+        };
+    });
+
+    System.angular.directive('domainsTemplate', function () {
+        return {
+            restrict: 'A',
+            replace: true,
+            scope: { domains: '=', dnsmasq: '=' },
+            template: function () { return $('#dnsmasq-domains-template').html(); }
         };
     });
 }());
