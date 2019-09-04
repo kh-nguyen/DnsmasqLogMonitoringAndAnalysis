@@ -14,11 +14,11 @@
             ignores: ['0.0.0.0'], // network nodes to be ignored
             hostnames: {}, // resolved hostnames cache
             categories: [
-                { name: 'adware', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, records: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' },
-                { name: 'fakenews', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, records: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/fakenews/hosts' },
-                { name: 'gambling', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, records: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/gambling/hosts' },
-                { name: 'porn', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, records: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/porn/clefspeare13/hosts' },
-                { name: 'social', classes: 'text-warning', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, records: [], url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/social/sinfonietta/hosts' }
+                { name: 'adware', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, records: [], matches: 0, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' },
+                { name: 'fakenews', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, records: [], matches: 0, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/fakenews/hosts' },
+                { name: 'gambling', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, records: [], matches: 0, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/gambling/hosts' },
+                { name: 'porn', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, records: [], matches: 0, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/porn/clefspeare13/hosts' },
+                { name: 'social', classes: 'text-warning', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, records: [], matches: 0, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/social/sinfonietta/hosts' }
             ],
             categoriesOptions: {
                 expand: { hidden: false, sort: { orderBy: 'name', orderReverse: false } },
@@ -64,6 +64,7 @@
 
                         if (data[obj.domain] === true) {
                             obj.category = category.name;
+                            ++category.matches;
                             return category;
                         }
                     }
@@ -146,7 +147,7 @@
                 }
             },
             queries: [],
-            queriesOptions: { expand: { hidden: true, sort: { orderBy: 'hostname', orderReverse: false } } },
+            queriesOptions: { expand: { hidden: true, sort: { orderBy: 'hostname', orderReverse: false }, limit: 50 } },
             resolvers: [],
             resolversOptions: { expand: { hidden: false, sort: { orderBy: 'key', orderReverse: false } }, sum: { totalRequests: 0 } },
             domains: [],
@@ -277,7 +278,7 @@
                         key: loggedEvent.requestor,
                         totalRequests: 0,
                         lastRequestTime: loggedEvent.time,
-                        records: [],
+                        records: [loggedEvent],
                         expand: { hidden: true, sort: { orderBy: 'time', orderReverse: true }, limit: 20 }
                     };
                     domain.records.push(requestor);
@@ -312,21 +313,17 @@
                 ++requestor.totalRequests;
                 ++domain.totalRequests;
                 ++topDomain.totalRequests;
-                if (requestor.lastRequestTime < loggedEvent.time) {
+                {
                     var lastRequestTime = requestor.lastRequestTime;
                     var currentRequestTime = loggedEvent.time;
-                    requestor.lastRequestTime = loggedEvent.time;
 
-                    var IsNewRecord = true;
+                    // remove seconds and milliseconds info to keep only minutes
+                    lastRequestTime.seconds(0);
+                    lastRequestTime.milliseconds(0);
+                    currentRequestTime.seconds(0);
+                    currentRequestTime.milliseconds(0);
 
-                    if (lastRequestTime instanceof Date) {
-                        lastRequestTime.setSeconds(0);
-                        lastRequestTime.setMilliseconds(0);
-                        currentRequestTime.setSeconds(0);
-                        currentRequestTime.setMilliseconds(0);
-
-                        IsNewRecord = lastRequestTime < currentRequestTime;
-                    }
+                    var IsNewRecord = lastRequestTime < currentRequestTime;
 
                     if (IsNewRecord === true) {
                         if (requestor.records.length >= REQUESTOR_MAX_RECORDS) {
@@ -335,6 +332,7 @@
                         requestor.records.push(loggedEvent);
                     }
                 }
+                requestor.lastRequestTime = loggedEvent.time;
                 domain.lastRequestTime = loggedEvent.time;
                 topDomain.lastRequestTime = loggedEvent.time;
 
@@ -627,6 +625,15 @@
             replace: true,
             scope: { domains: '=', dnsmasq: '=' },
             template: function () { return $('#dnsmasq-domains-template').html(); }
+        };
+    });
+
+    System.angular.directive('tableOptionsTemplate', function () {
+        return {
+            restrict: 'A',
+            replace: true,
+            scope: { records: '=', options: '=', dnsmasq: '=' },
+            template: function () { return $('#dnsmasq-table-options-template').html(); }
         };
     });
 }());

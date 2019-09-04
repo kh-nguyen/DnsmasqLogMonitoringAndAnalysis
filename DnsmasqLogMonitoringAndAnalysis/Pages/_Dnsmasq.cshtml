@@ -85,21 +85,14 @@
                                     <div domains-template domains="domain" dnsmasq="dnsmasq"></div>
                                 </td>
                             </tr>
+                        </tbody>
+                        <tfoot ng-if="!dnsmasq.domainsOptions.expand.hidden">
                             <tr>
                                 <td colspan="5">
-                                    <div class="row">
-                                        <div class="col-xs-4"></div>
-                                        <div class="col-xs-4">
-                                            <select ng-options="limit for limit in dnsmasq.limits"
-                                                    ng-model="dnsmasq.domainsOptions.expand.limit"></select>
-                                        </div>
-                                        <div class="col-xs-4">
-                                            <span class="pull-right">View <span ng-bind="dnsmasq.domains.length <= dnsmasq.domainsOptions.expand.limit ? dnsmasq.domains.length : dnsmasq.domainsOptions.expand.limit"></span> of <span ng-bind="dnsmasq.domains.length | number"></span></span>
-                                        </div>
-                                    </div>
+                                    <div table-options-template records="dnsmasq.domains" options="dnsmasq.domainsOptions" dnsmasq="dnsmasq"></div>
                                 </td>
                             </tr>
-                        </tbody>
+                        </tfoot>
                     </table>
                 </div>
 
@@ -139,13 +132,13 @@
                     <table class="table table-condensed table-bordered">
                         <caption>
                             <span toggle-hidden options="dnsmasq.categoriesOptions.expand"></span>
-                            Categories
+                            Categories: <span ng-bind="dnsmasq.categories | keylength | number"></span>
                         </caption>
                         <thead ng-if="!dnsmasq.categoriesOptions.expand.hidden">
                             <tr class="info">
                                 <th sort-direction options="dnsmasq.categoriesOptions.expand.sort" order-by="name" title="Name"></th>
-                                <th sort-direction options="dnsmasq.categoriesOptions.expand.sort" order-by="count" title="DB Count"></th>
-                                <th sort-direction options="dnsmasq.categoriesOptions.expand.sort" order-by="records.length" title="Matched"></th>
+                                <th sort-direction options="dnsmasq.categoriesOptions.expand.sort" order-by="data | keylength" title="DB Count"></th>
+                                <th sort-direction options="dnsmasq.categoriesOptions.expand.sort" order-by="matches" title="Matched"></th>
                             </tr>
                         </thead>
                         <tbody ng-if="!dnsmasq.categoriesOptions.expand.hidden">
@@ -155,7 +148,7 @@
                                     <span ng-class="dnsmasq.categoriesOptions.getClasses(category.name)" ng-bind="category.name"></span>
                                 </td>
                                 <td ng-bind="category.data | keylength | number"></td>
-                                <td><span ng-bind="category.records.length | number" class="update-item value-{{category.records.length}}"></span></td>
+                                <td><span ng-bind="category.matches | number" class="update-item value-{{category.matches}}"></span></td>
                             </tr>
                             <tr ng-repeat-end ng-if="!category.expand.hidden">
                                 <td colspan="3">
@@ -168,7 +161,7 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <tr ng-repeat-start="topdomain in category.records | orderBy:category.expand.sort.orderBy:category.expand.sort.orderReverse">
+                                            <tr ng-repeat-start="topdomain in category.records | orderBy:category.expand.sort.orderBy:category.expand.sort.orderReverse | limitTo: category.expand.limit">
                                                 <td>
                                                     <span toggle-hidden options="topdomain.expand"></span>
                                                     <span ng-bind="topdomain.key"></span>
@@ -180,6 +173,13 @@
                                                 <td colspan="3"><div domains-template domains="topdomain" dnsmasq="dnsmasq"></div></td>
                                             </tr>
                                         </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td colspan="3">
+                                                    <div table-options-template records="category.records" options="category" dnsmasq="dnsmasq"></div>
+                                                </td>
+                                            </tr>
+                                        </tfoot>
                                     </table>
                                 </td>
                             </tr>
@@ -212,7 +212,7 @@
                             </tr>
                         </thead>
                         <tbody ng-if="!dnsmasq.queriesOptions.expand.hidden">
-                            <tr ng-repeat-start="node in dnsmasq.queries | filter:dnsmasq.queriesOptions.search | orderBy:dnsmasq.queriesOptions.expand.sort.orderBy:dnsmasq.queriesOptions.expand.sort.orderReverse" class="animate-row">
+                            <tr ng-repeat-start="node in dnsmasq.queries | filter:dnsmasq.queriesOptions.search | orderBy:dnsmasq.queriesOptions.expand.sort.orderBy:dnsmasq.queriesOptions.expand.sort.orderReverse | limitTo: dnsmasq.queriesOptions.expand.limit" class="animate-row">
                                 <td>
                                     <span toggle-hidden options="node.expand"></span>
                                     <span ng-bind="node.hostname ? node.hostname : node.key"></span>
@@ -288,6 +288,13 @@
                                 </td>
                             </tr>
                         </tbody>
+                        <tfoot ng-if="!dnsmasq.queriesOptions.expand.hidden">
+                            <tr>
+                                <td colspan="7">
+                                    <div table-options-template records="dnsmasq.queries" options="dnsmasq.queriesOptions" dnsmasq="dnsmasq"></div>
+                                </td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>
@@ -405,20 +412,26 @@
                     </table>
                 </td>
             </tr>
+        </tbody>
+        <tfoot>
             <tr>
                 <td colspan="4">
-                    <div class="row">
-                        <div class="col-xs-4"></div>
-                        <div class="col-xs-4">
-                            <select ng-options="limit for limit in dnsmasq.limits"
-                                    ng-model="domains.expand.limit"></select>
-                        </div>
-                        <div class="col-xs-4">
-                            <span class="pull-right">View <span ng-bind="domains.records.length <= domains.expand.limit ? domains.records.length : domains.expand.limit"></span> of <span ng-bind="domains.records.length | number"></span></span>
-                        </div>
-                    </div>
+                    <div table-options-template records="domains.records" options="domains" dnsmasq="dnsmasq"></div>
                 </td>
             </tr>
-        </tbody>
+        </tfoot>
     </table>
+</div>
+
+<div id="dnsmasq-table-options-template" class="hidden ng-non-bindable">
+    <div class="row">
+        <div class="col-xs-4"></div>
+        <div class="col-xs-4">
+            <select ng-options="limit for limit in dnsmasq.limits"
+                    ng-model="options.expand.limit"></select>
+        </div>
+        <div class="col-xs-4">
+            <span class="pull-right">View <span ng-bind="records.length <= options.expand.limit ? records.length : options.expand.limit"></span> of <span ng-bind="records.length | number"></span></span>
+        </div>
+    </div>
 </div>
