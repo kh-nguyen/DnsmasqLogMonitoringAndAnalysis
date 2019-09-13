@@ -29,6 +29,7 @@
                 <div class="col-xs-12 col-md-6">
                     <div>Local Domain Name: <input ng-model="DomainName" /></div>
                     <div>IP Address Resolver Url: <input ng-model="HostnameResolveUrl" /></div>
+                    <div title="Usefully to keep only main domains (www.website.com or website.com) instead of the ones automatically visited by a program on the client's device">Keep bare or WWW domains only: <input type="checkbox" ng-model="dnsmasq.filteredDomainsOptions.bare_or_www_only" /></div>
                 </div>
             </fieldset>
         </div>
@@ -78,7 +79,7 @@
                                 </td>
                                 <td><span ng-bind="domain.requestors.length | number"></span></td>
                                 <td><span ng-bind="domain.totalRequests | number" class="update-item value-{{domain.totalRequests}}"></span></td>
-                                <td title="{{domain.lastRequestTime}}" am-time-ago="domain.lastRequestTime"></td>
+                                <td><span ng-bind="domain.lastRequestor.hostname ? domain.lastRequestor.hostname : domain.lastRequestor.key"></span>: <span title="{{domain.lastRequestTime}}" am-time-ago="domain.lastRequestTime"></span></td>
                             </tr>
                             <tr ng-repeat-end ng-if="!domain.expand.hidden">
                                 <td colspan="5">

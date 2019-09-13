@@ -150,6 +150,7 @@
             queriesOptions: { expand: { hidden: true, sort: { orderBy: 'hostname', orderReverse: false }, limit: 50 } },
             resolvers: [],
             resolversOptions: { expand: { hidden: false, sort: { orderBy: 'key', orderReverse: false } }, sum: { totalRequests: 0 } },
+            filteredDomainsOptions: { bare_or_www_only: false },
             domains: [],
             domainsOptions: { expand: { hidden: false, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 5 } },
             isNonRoutableRequest: function (query) {
@@ -172,6 +173,11 @@
                 }
 
                 if (loggedEvent.domain === null) {
+                    return;
+                }
+
+                // apply filters
+                if (dnsmasq.filteredDomainsOptions.bare_or_www_only && !isBareOrWwwDomain(loggedEvent.domain)) {
                     return;
                 }
 
@@ -335,6 +341,27 @@
                 requestor.lastRequestTime = loggedEvent.time;
                 domain.lastRequestTime = loggedEvent.time;
                 topDomain.lastRequestTime = loggedEvent.time;
+                topDomain.lastRequestor = requestor;
+
+                function isBareOrWwwDomain(domain) {
+                    var domainComponents = domain.split('.');
+
+                    if (domainComponents.length <= 1) {
+                        return false;
+                    }
+
+                    // adware is stored in the first category
+                    // and we want to not count adware domains for this filter
+                    if (dnsmasq.categories[0].data[domain] === true) {
+                        return false;
+                    }
+
+                    if (domainComponents.length >= 3) {
+                        return domain.startsWith('www.');
+                    }
+
+                    return true;
+                }
 
                 function getTopDomain(domain) {
                     var domainComponents = domain.split('.');
