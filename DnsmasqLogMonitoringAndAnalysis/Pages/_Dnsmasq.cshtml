@@ -15,7 +15,7 @@
                 <legend><span class="glyphicon glyphicon-cog" aria-hidden="true"></span> Settings</legend>
                 <div class="col-xs-12 col-md-6">
                     <table class="table table-condensed table-bordered">
-                        <caption>Ignored Nodes</caption>
+                        <caption>Ignored Clients</caption>
                         <thead>
                             <tr class="info"><th>IP Address</th></tr>
                         </thead>
@@ -29,6 +29,7 @@
                 <div class="col-xs-12 col-md-6">
                     <div>Local Domain Name: <input ng-model="DomainName" /></div>
                     <div>IP Address Resolver Url: <input ng-model="HostnameResolveUrl" /></div>
+                    <div title="Usefully to keep only main domains (www.website.com or website.com) instead of the ones automatically visited by a program on the client's device">Keep bare or WWW domains only: <input type="checkbox" ng-model="dnsmasq.filteredDomainsOptions.bare_or_www_only" /></div>
                 </div>
             </fieldset>
         </div>
@@ -73,12 +74,12 @@
                                 </td>
                                 <td>
                                     <ul class="list-inline" ng-repeat="category in domain.categories">
-                                        <li ng-class="dnsmasq.categoriesOptions.getClasses(category)" ng-bind="category"></li>
+                                        <li ng-class="dnsmasq.categoriesOptions.getClasses(category)" ng-bind="category.name"></li>
                                     </ul>
                                 </td>
                                 <td><span ng-bind="domain.requestors.length | number"></span></td>
                                 <td><span ng-bind="domain.totalRequests | number" class="update-item value-{{domain.totalRequests}}"></span></td>
-                                <td title="{{domain.lastRequestTime}}" am-time-ago="domain.lastRequestTime"></td>
+                                <td><span ng-bind="domain.lastRequestor.hostname ? domain.lastRequestor.hostname : domain.lastRequestor.key"></span>: <span title="{{domain.lastRequestTime}}" am-time-ago="domain.lastRequestTime"></span></td>
                             </tr>
                             <tr ng-repeat-end ng-if="!domain.expand.hidden">
                                 <td colspan="5">
@@ -133,11 +134,14 @@
                         <caption>
                             <span toggle-hidden options="dnsmasq.categoriesOptions.expand"></span>
                             Categories: <span ng-bind="dnsmasq.categories | keylength | number"></span>
+                            <span class="pull-right">
+                                <a class="btn btn-default btn-sm" ng-click="dnsmasq.categoriesOptions.loadCategories()" title="Update all categories"><span class="glyphicon glyphicon glyphicon-refresh" aria-hidden="true"></span></a>
+                            </span>
                         </caption>
                         <thead ng-if="!dnsmasq.categoriesOptions.expand.hidden">
                             <tr class="info">
                                 <th sort-direction options="dnsmasq.categoriesOptions.expand.sort" order-by="name" title="Name"></th>
-                                <th sort-direction options="dnsmasq.categoriesOptions.expand.sort" order-by="data | keylength" title="DB Count"></th>
+                                <th sort-direction options="dnsmasq.categoriesOptions.expand.sort" order-by="size" title="DB Count"></th>
                                 <th sort-direction options="dnsmasq.categoriesOptions.expand.sort" order-by="matches" title="Matched"></th>
                             </tr>
                         </thead>
@@ -145,9 +149,9 @@
                             <tr ng-repeat-start="category in dnsmasq.categories | orderBy:dnsmasq.categoriesOptions.expand.sort.orderBy:dnsmasq.categoriesOptions.expand.sort.orderReverse">
                                 <td>
                                     <span toggle-hidden options="category.expand"></span>
-                                    <span ng-class="dnsmasq.categoriesOptions.getClasses(category.name)" ng-bind="category.name"></span>
+                                    <span ng-class="dnsmasq.categoriesOptions.getClasses(category.name)" ng-bind="category.name" title="{{category.url}}"></span>
                                 </td>
-                                <td ng-bind="category.data | keylength | number"></td>
+                                <td ng-bind="category.size | number"></td>
                                 <td><span ng-bind="category.matches | number" class="update-item value-{{category.matches}}"></span></td>
                             </tr>
                             <tr ng-repeat-end ng-if="!category.expand.hidden">
@@ -220,7 +224,7 @@
                                 <td ng-bind="node.key"></td>
                                 <td>
                                     <ul class="list-inline" ng-repeat="category in node.categories">
-                                        <li ng-class="dnsmasq.categoriesOptions.getClasses(category)" ng-bind="category"></li>
+                                        <li ng-class="dnsmasq.categoriesOptions.getClasses(category)" ng-bind="category.name"></li>
                                     </ul>
                                 </td>
                                 <td><span ng-bind="node.totalTopDomains | number" class="update-item value-{{node.totalTopDomains}}"></span></td>
@@ -248,7 +252,7 @@
                                                 </td>
                                                 <td>
                                                     <ul class="list-inline" ng-repeat="category in topdomain.categories">
-                                                        <li ng-class="category != 'adware' ? 'text-warning' : ''" ng-bind="category"></li>
+                                                        <li ng-class="category.name != 'adware' ? 'text-warning' : ''" ng-bind="category.name"></li>
                                                     </ul>
                                                 </td>
                                                 <td><span ng-bind="topdomain.totalDomains | number" class="update-item value-{{topdomain.totalDomains}}"></span></td>
@@ -263,7 +267,7 @@
                                                                 <th sort-direction options="topdomain" order-by="domain" title="Domain"></th>
                                                                 <th sort-direction options="topdomain" order-by="ipaddress" title="IP Address"></th>
                                                                 <th sort-direction options="topdomain" order-by="resolver" title="Resolver"></th>
-                                                                <th sort-direction options="topdomain" order-by="category" title="Category"></th>
+                                                                <th sort-direction options="topdomain" order-by="category.name" title="Category"></th>
                                                                 <th sort-direction options="topdomain" order-by="totalRequests" title="Count"></th>
                                                                 <th sort-direction options="topdomain" order-by="time" title="Last Time"></th>
                                                             </tr>
@@ -275,7 +279,7 @@
                                                                 <td ng-bind="query.domain"></td>
                                                                 <td ng-bind="query.ipaddress"></td>
                                                                 <td ng-bind="query.resolver"></td>
-                                                                <td ng-bind="query.category"></td>
+                                                                <td ng-bind="query.category.name"></td>
                                                                 <td><span ng-bind="query.totalRequests" class="update-item value-{{query.totalRequests}}"></span></td>
                                                                 <td title="{{query.time}}" am-time-ago="query.time"></td>
                                                             </tr>

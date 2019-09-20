@@ -14,28 +14,89 @@
             ignores: ['0.0.0.0'], // network nodes to be ignored
             hostnames: {}, // resolved hostnames cache
             categories: [
-                { name: 'adware', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, records: [], matches: 0, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' },
-                { name: 'fakenews', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, records: [], matches: 0, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/fakenews/hosts' },
-                { name: 'gambling', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, records: [], matches: 0, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/gambling/hosts' },
-                { name: 'porn', classes: 'text-danger', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, records: [], matches: 0, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/porn/clefspeare13/hosts' },
-                { name: 'social', classes: 'text-warning', expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }, data: {}, records: [], matches: 0, url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/social/sinfonietta/hosts' }
+                { name: 'Adware', url: [ 'https://raw.githubusercontent.com/notracking/hosts-blocklists/master/hostnames.txt', 'https://raw.githubusercontent.com/notracking/hosts-blocklists/master/domains.txt' ] },
+                { name: 'Fakenews', url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/fakenews/hosts', classes: 'text-danger' },
+                { name: 'Gambling', url: ['https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/gambling/hosts', 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/gambling.txt'], classes: 'text-danger' },
+                { name: 'Porn', url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/porn/clefspeare13/hosts', classes: 'text-danger' },
+                { name: 'Social', url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/social/sinfonietta/hosts', classes: 'text-warning' },
+                { name: 'Adult', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/adult.txt', classes: 'text-danger' },
+                { name: 'Advertising', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/advertising.txt' },
+                { name: 'Cartoons', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/cartoons.txt' },
+                { name: 'Chat', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/chat.txt' },
+                { name: 'Dangerous', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/dangerous.txt' },
+                { name: 'Dating', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/dating.txt' },
+                { name: 'Drugs', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/drugs.txt' },
+                { name: 'Games', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/games.txt' },
+                { name: 'Hacking', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/hacking.txt' },
+                { name: 'Malware', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/malware.txt' },
+                { name: 'Multimedia', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/multimedia.txt' },
+                { name: 'Phishing', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/phishing.txt' },
+                { name: 'Redirector', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/redirector.txt' },
+                { name: 'Remote-control', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/remote-control.txt' },
+                { name: 'Shopping', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/shopping.txt' },
+                { name: 'Social-networks', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/social-networks.txt' },
+                { name: 'Sports', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/sports.txt' },
+                { name: 'Violence', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/violence.txt' },
+                { name: 'Warez', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/warez.txt' }
             ],
             categoriesOptions: {
+                data: {},
                 expand: { hidden: false, sort: { orderBy: 'name', orderReverse: false } },
                 load: function () {
-                    loadCategories();
+                    var options = this;
 
-                    setInterval(loadCategories, 1 * 24 * 60 * 60 * 1000 /* reload every day */);
+                    loadDefaultProperties();
+                    options.loadCategories();
 
-                    function loadCategories() {
+                    // schedule to reload every day
+                    setInterval(options.loadCategories, 1 * 24 * 60 * 60 * 1000);
+
+                    function loadDefaultProperties() {
                         $.each(dnsmasq.categories, function (index, value) {
-                            $.get(value.url, function (data) {
-                                loadCategory(data, value.data);
+                            $.extend(value, {
+                                expand: {
+                                    hidden: true,
+                                    sort: {
+                                        orderBy: 'lastRequestTime',
+                                        orderReverse: true
+                                    },
+                                    limit: 20
+                                },
+                                size: 0,
+                                records: [],
+                                matches: 0
                             });
                         });
                     }
+                },
+                loadCategories: function () {
+                    var options = this;
 
-                    function loadCategory(data, dict) {
+                    options.updating = true;
+
+                    // clear or initialize the data holder variable
+                    options.data = {};
+
+                    $.each(dnsmasq.categories, function (index, value) {
+                        value.size = 0;
+                        var url = value.url;
+
+                        if (typeof url === 'string') {
+                            loadData(url);
+                        } else { // array of urls
+                            $.each(url, function (index, value) {
+                                loadData(value);
+                            });
+                        }
+
+                        function loadData(url) {
+                            $.get(url, function (data) {
+                                loadCategory(data, options.data, value);
+                            });
+                        }
+                    });
+
+                    function loadCategory(data, dict, cat) {
                         data = data.split('\n');
 
                         $.each(data, function (index, value) {
@@ -43,12 +104,21 @@
                                 return;
                             }
 
-                            value = value.split(' ');
-                            var ip = value[0];
+                            value = value.split(' ').map(function (e) { return $.trim(e); });
 
-                            if (ip === '0.0.0.0' || ip === '127.0.0.1') {
-                                dict[value[1]] = true;
+                            var key = value[0];
+
+                            if (value.length > 1) {
+                                if (key === '0.0.0.0' || key === '127.0.0.1') {
+                                    key = value[1];
+                                }
                             }
+
+                            if (!(key in dict)) {
+                                ++cat.size;
+                            }
+
+                            dict[key] = cat;
                         });
                     }
                 },
@@ -57,21 +127,32 @@
                         return false;
                     }
 
-                    var categories = dnsmasq.categories;
-                    for (var i = 0; i < categories.length; ++i) {
-                        var category = categories[i];
-                        var data = category.data;
+                    var domainComponents = obj.domain.split('.');
 
-                        if (data[obj.domain] === true) {
-                            obj.category = category.name;
+                    while (domainComponents.length > 1) {
+                        var domain = domainComponents.join('.');
+                        var category = dnsmasq.categoriesOptions.data[domain];
+
+                        if (typeof category === 'object') {
+                            obj.category = category;
                             ++category.matches;
                             return category;
                         }
+
+                        domainComponents.shift();
                     }
 
                     return false;
                 },
-                getClasses: function (categoryName) {
+                getClasses: function (categoryObj) {
+                    var categoryName = '';
+
+                    if (typeof categoryObj === 'string') {
+                        categoryName = categoryObj;
+                    } else if (typeof categoryObj === 'object') {
+                        categoryName = categoryObj.name;
+                    }
+
                     var category = dnsmasq.categories.find(function (x) { return x.name === categoryName; });
 
                     if (typeof category !== 'undefined') {
@@ -150,6 +231,7 @@
             queriesOptions: { expand: { hidden: true, sort: { orderBy: 'hostname', orderReverse: false }, limit: 50 } },
             resolvers: [],
             resolversOptions: { expand: { hidden: false, sort: { orderBy: 'key', orderReverse: false } }, sum: { totalRequests: 0 } },
+            filteredDomainsOptions: { bare_or_www_only: false },
             domains: [],
             domainsOptions: { expand: { hidden: false, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 5 } },
             isNonRoutableRequest: function (query) {
@@ -175,6 +257,11 @@
                     return;
                 }
 
+                // apply filters
+                if (dnsmasq.filteredDomainsOptions.bare_or_www_only && !isBareOrWwwDomain(loggedEvent.domain)) {
+                    return;
+                }
+
                 var requestor = dnsmasq.queries.find(function (x) { return x.key === loggedEvent.requestor; });
                 if (typeof requestor === 'undefined') {
                     requestor = {
@@ -196,7 +283,7 @@
                 if (typeof topDomain === 'undefined') {
                     topDomain = {
                         key: topDomainKey,
-                        expand: { hidden: true, sort: { orderBy: 'key', orderReverse: true }, limit: 20 },
+                        expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 },
                         records: [],
                         totalDomains: 0,
                         totalRequests: 0,
@@ -256,7 +343,7 @@
                         lastRequestTime: loggedEvent.time,
                         requestors: [],
                         records: [],
-                        expand: { hidden: true, sort: { orderBy: 'key', orderReverse: true }, limit: 20 }
+                        expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }
                     };
                     dnsmasq.domains.push(topDomain);
                 }
@@ -279,7 +366,7 @@
                         totalRequests: 0,
                         lastRequestTime: loggedEvent.time,
                         records: [loggedEvent],
-                        expand: { hidden: true, sort: { orderBy: 'time', orderReverse: true }, limit: 20 }
+                        expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }
                     };
                     domain.records.push(requestor);
                     ++domain.totalRequestors;
@@ -335,6 +422,27 @@
                 requestor.lastRequestTime = loggedEvent.time;
                 domain.lastRequestTime = loggedEvent.time;
                 topDomain.lastRequestTime = loggedEvent.time;
+                topDomain.lastRequestor = requestor;
+
+                function isBareOrWwwDomain(domain) {
+                    var domainComponents = domain.split('.');
+
+                    if (domainComponents.length <= 1) {
+                        return false;
+                    }
+
+                    // we want to not count adware domains for this filter
+                    var category = dnsmasq.categoriesOptions.data[domain];
+                    if (typeof category !== 'undefined' && category.name === 'Adware') {
+                        return false;
+                    }
+
+                    if (domainComponents.length >= 3) {
+                        return domain.startsWith('www.');
+                    }
+
+                    return true;
+                }
 
                 function getTopDomain(domain) {
                     var domainComponents = domain.split('.');
