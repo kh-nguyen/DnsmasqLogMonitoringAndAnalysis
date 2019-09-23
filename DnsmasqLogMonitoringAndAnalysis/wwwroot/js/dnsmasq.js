@@ -11,10 +11,28 @@
         $.extend(true, dnsmasq, {
             startTime: new Date(),
             limits: [5, 10, 20, 50, 100, 200, 500, 1000],
-            ignores: ['0.0.0.0'], // network nodes to be ignored
+            ignored: {
+                add: function () {
+                    var input = this.input;
+
+                    if (input === null) {
+                        return;
+                    }
+
+                    if (!this.data.find(function (x) { return x === input; })) {
+                        this.data.push(input);
+                    }
+
+                    this.input = null;
+                },
+                remove: function (value) {
+                    this.data.splice(this.data.indexOf(value), 1);
+                },
+                data: ['0.0.0.0'] // network nodes to be ignored
+            },
             hostnames: {}, // resolved hostnames cache
             categories: [
-                { name: 'Adware', url: [ 'https://raw.githubusercontent.com/notracking/hosts-blocklists/master/hostnames.txt', 'https://raw.githubusercontent.com/notracking/hosts-blocklists/master/domains.txt' ] },
+                { name: 'Adware', url: ['https://raw.githubusercontent.com/notracking/hosts-blocklists/master/hostnames.txt', 'https://raw.githubusercontent.com/notracking/hosts-blocklists/master/domains.txt'] },
                 { name: 'Fakenews', url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/fakenews/hosts', classes: 'text-danger' },
                 { name: 'Gambling', url: ['https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/gambling/hosts', 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/gambling.txt'], classes: 'text-danger' },
                 { name: 'Porn', url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/porn/clefspeare13/hosts', classes: 'text-danger' },
@@ -165,11 +183,6 @@
             data: [],
             dataOptions: {
                 expand: { hidden: true, sort: { orderBy: 'time', orderReverse: true }, limit: 100 },
-                applyLimit: function () {
-                    while (dnsmasq.data.length > dnsmasq.dataOptions.expand.limit) {
-                        dnsmasq.data.shift();
-                    }
-                },
                 count: 0,
                 chart: {
                     show: true,
@@ -249,7 +262,7 @@
                 var dnsmasq = $scope.dnsmasq;
                 var REQUESTOR_MAX_RECORDS = 100;
 
-                if ($.inArray($.trim(loggedEvent.requestor), dnsmasq.ignores) >= 0) {
+                if ($.inArray($.trim(loggedEvent.requestor), dnsmasq.ignores.data) >= 0) {
                     return;
                 }
 
@@ -390,6 +403,7 @@
                         };
                         categoryObj.records.push(catTopDomain);
                     }
+                    catTopDomain.lastRequestor = requestor;
                     catTopDomain.lastRequestTime = loggedEvent.time;
 
                     var catDomain = catTopDomain.records.find(function (x) { return x.key === loggedEvent.domain; });
@@ -507,7 +521,7 @@
 
             function isIP(ipaddress) {
                 return /^(?=\d+\.\d+\.\d+\.\d+$)(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[0-9])\.?){4}$/.test(ipaddress);
-            }  
+            }
         };
 
         // load category lists
@@ -741,7 +755,8 @@
             restrict: 'A',
             replace: true,
             scope: { records: '=', options: '=', dnsmasq: '=' },
-            template: function () { return $('#dnsmasq-table-options-template').html(); }
+            template: function () { return $('#dnsmasq-table-options-template').html(); },
+            link: function (scope, element, attr) { scope.Math = window.Math; }
         };
     });
 }());

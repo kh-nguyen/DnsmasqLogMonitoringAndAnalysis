@@ -15,13 +15,20 @@
                 <legend><span class="glyphicon glyphicon-cog" aria-hidden="true"></span> Settings</legend>
                 <div class="col-xs-12 col-md-6">
                     <table class="table table-condensed table-bordered">
-                        <caption>Ignored Clients</caption>
+                        <caption>
+                            Ignored Clients
+                            <input type="text" ng-model="dnsmasq.ignored.input" />
+                            <button class="btn btn-default btn-sm" ng-click="dnsmasq.ignored.add()"><i class="glyphicon glyphicon-plus"></i></button>
+                        </caption>
                         <thead>
                             <tr class="info"><th>IP Address</th></tr>
                         </thead>
                         <tbody>
-                            <tr ng-repeat="node in dnsmasq.ignores">
-                                <td ng-bind="node"></td>
+                            <tr ng-repeat="node in dnsmasq.ignored.data">
+                                <td>
+                                    <span ng-bind="node"></span>
+                                    <button class="btn btn-default btn-sm pull-right" ng-click="dnsmasq.ignored.remove(node)"><i class="glyphicon glyphicon-remove"></i></button>
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -67,14 +74,14 @@
                             </tr>
                         </thead>
                         <tbody ng-if="!dnsmasq.domainsOptions.expand.hidden">
-                            <tr ng-repeat-start="domain in dnsmasq.domains | filter:dnsmasq.domainsOptions.search | orderBy:dnsmasq.domainsOptions.expand.sort.orderBy:dnsmasq.domainsOptions.expand.sort.orderReverse | limitTo: dnsmasq.domainsOptions.expand.limit" class="animate-row">
+                            <tr ng-repeat-start="domain in dnsmasq.domains | filter:dnsmasq.domainsOptions.search | orderBy:dnsmasq.domainsOptions.expand.sort.orderBy:dnsmasq.domainsOptions.expand.sort.orderReverse | limitTo: dnsmasq.domainsOptions.expand.limit : ((dnsmasq.domainsOptions.expand.page - 1) * dnsmasq.domainsOptions.expand.limit)">
                                 <td>
                                     <span toggle-hidden options="domain.expand"></span>
                                     <span ng-bind="domain.key"></span>
                                 </td>
                                 <td>
-                                    <ul class="list-inline" ng-repeat="category in domain.categories">
-                                        <li ng-class="dnsmasq.categoriesOptions.getClasses(category)" ng-bind="category.name"></li>
+                                    <ul class="list-inline">
+                                        <li ng-repeat="category in domain.categories" ng-class="dnsmasq.categoriesOptions.getClasses(category)" ng-bind="category.name"></li>
                                     </ul>
                                 </td>
                                 <td><span ng-bind="domain.requestors.length | number"></span></td>
@@ -171,7 +178,7 @@
                                                     <span ng-bind="topdomain.key"></span>
                                                 </td>
                                                 <td><span ng-bind="topdomain.records.length | number" class="update-item value-{{topdomain.records.length}}"></span></td>
-                                                <td title="{{topdomain.lastRequestTime}}" am-time-ago="topdomain.lastRequestTime"></td>
+                                                <td><span ng-bind="topdomain.lastRequestor.hostname ? topdomain.lastRequestor.hostname : topdomain.lastRequestor.key"></span>: <span title="{{topdomain.lastRequestTime}}" am-time-ago="topdomain.lastRequestTime"></span></td>
                                             </tr>
                                             <tr ng-repeat-end ng-if="!topdomain.expand.hidden">
                                                 <td colspan="3"><div domains-template domains="topdomain" dnsmasq="dnsmasq"></div></td>
@@ -223,8 +230,8 @@
                                 </td>
                                 <td ng-bind="node.key"></td>
                                 <td>
-                                    <ul class="list-inline" ng-repeat="category in node.categories">
-                                        <li ng-class="dnsmasq.categoriesOptions.getClasses(category)" ng-bind="category.name"></li>
+                                    <ul class="list-inline">
+                                        <li ng-repeat="category in node.categories" ng-class="dnsmasq.categoriesOptions.getClasses(category)" ng-bind="category.name"></li>
                                     </ul>
                                 </td>
                                 <td><span ng-bind="node.totalTopDomains | number" class="update-item value-{{node.totalTopDomains}}"></span></td>
@@ -251,8 +258,8 @@
                                                     <span ng-bind="topdomain.key"></span>
                                                 </td>
                                                 <td>
-                                                    <ul class="list-inline" ng-repeat="category in topdomain.categories">
-                                                        <li ng-class="category.name != 'adware' ? 'text-warning' : ''" ng-bind="category.name"></li>
+                                                    <ul class="list-inline">
+                                                        <li ng-repeat="category in topdomain.categories" ng-class="category.name != 'adware' ? 'text-warning' : ''" ng-bind="category.name"></li>
                                                     </ul>
                                                 </td>
                                                 <td><span ng-bind="topdomain.totalDomains | number" class="update-item value-{{topdomain.totalDomains}}"></span></td>
@@ -324,7 +331,6 @@
                         Limit:
                         <select ng-options="limit for limit in dnsmasq.limits"
                                 ng-model="dnsmasq.dataOptions.expand.limit"
-                                ng-change="dnsmasq.dataOptions.applyLimit()"
                                 title="Raw data storage size limit"></select>
                     </span>
                     <canvas real-time-data-chart ng-if="dnsmasq.dataOptions.chart.show" style="width: 800px; height: 200px"></canvas>
@@ -337,7 +343,7 @@
                     </tr>
                 </thead>
                 <tbody ng-if="!dnsmasq.dataOptions.expand.hidden">
-                    <tr ng-repeat="row in dnsmasq.data | filter:dnsmasq.dataOptions.search | orderBy:dnsmasq.dataOptions.expand.sort.orderBy:dnsmasq.dataOptions.expand.sort.orderReverse" class="animate-row">
+                    <tr ng-repeat="row in dnsmasq.data | filter:dnsmasq.dataOptions.search | orderBy:dnsmasq.dataOptions.expand.sort.orderBy:dnsmasq.dataOptions.expand.sort.orderReverse | limitTo: dnsmasq.dataOptions.expand.limit">
                         <td title="{{row.time}}" am-time-ago="row.time"></td>
                         <td ng-bind="row.logger"></td>
                         <td ng-bind="row.messageSplits.length == 4 ? row.messageSplits[0] : row.message" colspan="{{row.messageSplits.length == 4 ? 0 : 4}}"></td>
@@ -429,13 +435,15 @@
 
 <div id="dnsmasq-table-options-template" class="hidden ng-non-bindable">
     <div class="row">
-        <div class="col-xs-4"></div>
-        <div class="col-xs-4">
-            <select ng-options="limit for limit in dnsmasq.limits"
-                    ng-model="options.expand.limit"></select>
+        <div class="col-xs-12 col-sm-4"></div>
+        <div class="col-xs-12 col-sm-4 text-nowrap">
+            <button class="btn btn-default btn-sm" ng-disabled="options.expand.page <= 1" ng-click="options.expand.page=options.expand.page-1"><i class="glyphicon glyphicon-triangle-left"></i></button>
+            Page <input type="text" ng-model="options.expand.page" ng-init="options.expand.page=1" style="max-width: 30px" /> of <span ng-bind="Math.ceil(records.length / options.expand.limit) | number"></span>
+            <button class="btn btn-default btn-sm" ng-disabled="options.expand.page >= Math.ceil(records.length / options.expand.limit)" ng-click="options.expand.page=options.expand.page+1"><i class="glyphicon glyphicon-triangle-right"></i></button>
+            <select ng-options="limit for limit in dnsmasq.limits" ng-model="options.expand.limit" title="records per page"></select>
         </div>
-        <div class="col-xs-4">
-            <span class="pull-right">View <span ng-bind="records.length <= options.expand.limit ? records.length : options.expand.limit"></span> of <span ng-bind="records.length | number"></span></span>
+        <div class="col-xs-12 col-sm-4">
+            <span class="pull-right">View <span ng-bind="options.expand.page * options.expand.limit - options.expand.limit + 1"></span> - <span ng-bind="records.length <= options.expand.limit ? records.length : (records.length <= options.expand.page * options.expand.limit ? records.length: options.expand.page * options.expand.limit)"></span> of <span ng-bind="records.length | number"></span></span>
         </div>
     </div>
 </div>
