@@ -19,3 +19,7 @@
 .dnsmasq table td {
     word-break: break-all;
 }
+
+.dnsmasq .description {
+    max-width: 400px;
+}

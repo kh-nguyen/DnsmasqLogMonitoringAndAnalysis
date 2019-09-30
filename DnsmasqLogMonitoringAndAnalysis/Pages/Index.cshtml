@@ -6,6 +6,7 @@
     var viewModel = new {
         DomainName = "lan",
         HostnameResolveUrl = "/api/Resolve/Hostname",
+        GetDescriptionUrl = "/api/Resolve/Description",
         dnsmasq = new { ignores = new string[] { "192.168.1.0" } },
         OldData = Request.Query // if the request is to include the log file, then supply it
         .Where(x => x.Key == "log" && x.Value == "true").Any()

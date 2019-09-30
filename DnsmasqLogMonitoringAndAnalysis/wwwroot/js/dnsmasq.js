@@ -19,6 +19,8 @@
                         return;
                     }
 
+                    input = $.trim(input);
+
                     if (!this.data.find(function (x) { return x === input; })) {
                         this.data.push(input);
                     }
@@ -262,7 +264,7 @@
                 var dnsmasq = $scope.dnsmasq;
                 var REQUESTOR_MAX_RECORDS = 100;
 
-                if ($.inArray($.trim(loggedEvent.requestor), dnsmasq.ignores.data) >= 0) {
+                if ($.inArray($.trim(loggedEvent.requestor), dnsmasq.ignored.data) >= 0) {
                     return;
                 }
 
@@ -371,6 +373,7 @@
                         expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }
                     };
                     topDomain.records.push(domain);
+                    getDescription(domain, topDomain);
                 }
                 requestor = domain.records.find(function (x) { return x.key === loggedEvent.requestor; });
                 if (typeof requestor === 'undefined') {
@@ -437,6 +440,16 @@
                 domain.lastRequestTime = loggedEvent.time;
                 topDomain.lastRequestTime = loggedEvent.time;
                 topDomain.lastRequestor = requestor;
+
+                function getDescription(domain, topDomain) {
+                    $.get($scope.GetDescriptionUrl, { domain: domain.key })
+                    .done(function (data) {
+                        if (typeof data !== 'undefined' && data.length > 1) {
+                            domain.description = data;
+                            topDomain.description = data;
+                        }
+                    });
+                }
 
                 function isBareOrWwwDomain(domain) {
                     var domainComponents = domain.split('.');
