@@ -9,6 +9,7 @@
 
         var dnsmasq = $scope.dnsmasq = {};
         $.extend(true, dnsmasq, {
+            title: 'Dnsmasq Log Real-Time Monitoring And Analysis',
             startTime: new Date(),
             limits: [5, 10, 20, 50, 100, 200, 500, 1000],
             ignored: {
@@ -61,7 +62,12 @@
             ],
             categoriesOptions: {
                 data: {},
-                expand: { hidden: false, sort: { orderBy: 'name', orderReverse: false } },
+                expand: { hidden: true, sort: { orderBy: 'name', orderReverse: false } },
+                resetCounter: function () {
+                    $.each(dnsmasq.categories, function (index, value) {
+                        value.matches = 0;
+                    });
+                },
                 load: function () {
                     var options = this;
 
@@ -187,7 +193,7 @@
                 expand: { hidden: true, sort: { orderBy: 'time', orderReverse: true }, limit: 100 },
                 count: 0,
                 chart: {
-                    show: true,
+                    show: false,
                     durations: [
                         { name: '15 seconds', value: 15 * 1000 },
                         { name: '30 seconds', value: 30 * 1000 },
@@ -245,7 +251,7 @@
             queries: [],
             queriesOptions: { expand: { hidden: true, sort: { orderBy: 'hostname', orderReverse: false }, limit: 50 } },
             resolvers: [],
-            resolversOptions: { expand: { hidden: false, sort: { orderBy: 'key', orderReverse: false } }, sum: { totalRequests: 0 } },
+            resolversOptions: { expand: { hidden: true, sort: { orderBy: 'key', orderReverse: false } }, sum: { totalRequests: 0 } },
             filteredDomainsOptions: { bare_or_www_only: false },
             domains: [],
             domainsOptions: { expand: { hidden: false, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 10 } },
@@ -521,15 +527,25 @@
                     }
                 }
             },
+            clearData: function () {
+                var $this = this;
+
+                $this.data = [];
+                $this.queries = [];
+                $this.domains = [];
+                $this.resolvers = [];
+
+                this.categoriesOptions.resetCounter();
+                this.resolversOptions.sum.totalRequests = 0;
+                this.dataOptions.count = 0;
+            },
             loadData: function () {
                 var $this = this;
 
                 $scope.loading_data = true;
 
                 $.get($scope.OldDataUrl).done(function (data) {
-                    $this.data = [];
-                    $this.queries = [];
-                    $this.domains = [];
+                    $this.clearData();
 
                     if (typeof data !== 'undefined' && data.length > 1) {
                         model.OldData = data;
@@ -558,6 +574,7 @@
             if (typeof hostname === 'undefined' || isIP(hostname)) {
                 var queue = [];
                 dnsmasq.hostnames[ipAddress] = queue;
+                queue.push(storageObject);
 
                 $.post($scope.HostnameResolveUrl + '/' + ipAddress, function (data) {
                     if (data !== null && data.endsWith($scope.DomainName)) {
@@ -710,9 +727,13 @@
         $timeout(processSavedData);
 
         function processSavedData() {
-            if (model.OldData === null || typeof model.OldData === 'undefined') {
+            if (model.OldData === null || typeof model.OldData !== 'object') {
                 return;
             }
+
+            // process multiple lines for each time
+            // interval to improve data throughput
+            var NUMBER_OF_LINES_PER_INTERVAL = 10;
 
             // need to reverse the array to process correctly
             // the data with time in increasing position
@@ -722,6 +743,14 @@
             $scope.OldDataLoadedCount = 0;
 
             var interval = setInterval(function () {
+                var i = 0;
+
+                for (i = 0; i < NUMBER_OF_LINES_PER_INTERVAL; i++) {
+                    process();
+                }
+            });
+
+            function process () {
                 if (data.length > 0) {
                     var loggedEvent = data.pop();
                     System.loggedEvent({ Message: loggedEvent, hidden: true });
@@ -730,7 +759,7 @@
                     clearInterval(interval);
                     model.OldData = null;
                 }
-            });
+            }
         }
     }]);
 

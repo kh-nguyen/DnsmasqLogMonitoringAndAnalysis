@@ -1,6 +1,6 @@
 ﻿<div class="content-wrapper container-fluid dnsmasq">
     <h3>
-        Dnsmasq Log Real-Time Monitoring And Analysis
+        <span ng-bind="dnsmasq.title"></span>: <span ng-bind="NetworkPort" title="The listening network port"></span>
         <mark ng-if="dnsmasq.dataOptions.pause"> pausing...</mark>
         <span class="pull-right">
             <span>
@@ -9,8 +9,9 @@
                 </a>
                 <span ng-if="loading_data" class="glyphicon glyphicon-hdd" aria-hidden="true" title="Loading data..."></span>
             </span>
-            <a class="btn btn-default btn-sm" ng-click="dnsmasq.dataOptions.pause = !dnsmasq.dataOptions.pause"><span class="glyphicon" ng-class="dnsmasq.dataOptions.pause ? 'glyphicon-play' : 'glyphicon-pause'" aria-hidden="true"></span></a>
-            <a class="btn btn-default btn-sm" ng-click="dnsmasq.dataOptions.settings = !dnsmasq.dataOptions.settings"><span class="glyphicon glyphicon-cog" aria-hidden="true"></span></a>
+            <a class="btn btn-default btn-sm" ng-click="dnsmasq.clearData()" title="Clear data"><span class="glyphicon glyphicon-erase" aria-hidden="true"></span></a>
+            <a class="btn btn-default btn-sm" ng-click="dnsmasq.dataOptions.pause = !dnsmasq.dataOptions.pause" title="Pause the program"><span class="glyphicon" ng-class="dnsmasq.dataOptions.pause ? 'glyphicon-play' : 'glyphicon-pause'" aria-hidden="true"></span></a>
+            <a class="btn btn-default btn-sm" ng-click="dnsmasq.dataOptions.settings = !dnsmasq.dataOptions.settings" title="Show the settings"><span class="glyphicon glyphicon-cog" aria-hidden="true"></span></a>
             <small>Uptime: <span title="{{dnsmasq.startTime}}" am-time-ago="dnsmasq.startTime"></span></small>
         </span>
     </h3>

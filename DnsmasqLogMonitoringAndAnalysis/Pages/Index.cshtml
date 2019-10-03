@@ -5,13 +5,13 @@
 
     var viewModel = new {
         DomainName = "lan",
+        NetworkPort = Startup.NETWORK_PORT,
         HostnameResolveUrl = "/api/Resolve/Hostname",
         GetDescriptionUrl = "/api/Resolve/Description",
         OldDataUrl = "/api/Resolve/Data",
         dnsmasq = new { ignored = new { data = new string[] { "192.168.1.0", "192.168.0.80" } } },
         OldData = Request.Query // if the request is to include the log file, then supply it
-        .Where(x => x.Key == "log" && x.Value == "true").Any()
-        ? LogMessageRelay.OldData : null
+        .Where(x => x.Key == "log" && x.Value == "true").Any() ? LogMessageRelay.OldData : null
     };
 }
 

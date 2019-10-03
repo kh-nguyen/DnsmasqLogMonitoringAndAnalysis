@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -18,6 +19,8 @@ namespace DnsmasqLogMonitoringAndAnalysis
 {
     public class Startup
     {
+        public static string NETWORK_PORT = Environment.GetEnvironmentVariable("DnsmasqDataPort");
+
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
@@ -50,13 +53,12 @@ namespace DnsmasqLogMonitoringAndAnalysis
 
             app.UseMvc();
 
-            log4net.GlobalContext.Properties["LogFileName"] = LogMessageRelay.GetLogFilePath();
+            log4net.GlobalContext.Properties["LogFilePath"] = LogMessageRelay.GetLogFilePath();
             loggerFactory.AddLog4Net();
 
-            var listernPort = Environment.GetEnvironmentVariable("DnsmasqDataPort");
-            if (string.IsNullOrEmpty(listernPort))
+            if (string.IsNullOrEmpty(NETWORK_PORT))
                 throw new ArgumentNullException("There is no dnsmasq port in the enviroment variable.");
-            app.ApplicationServices.GetService<LogMessageRelay>().Listen(int.Parse(listernPort));
+            app.ApplicationServices.GetService<LogMessageRelay>().Listen(int.Parse(NETWORK_PORT));
         }
     }
 
@@ -64,32 +66,31 @@ namespace DnsmasqLogMonitoringAndAnalysis
 
     public class LogMessageRelay
     {
-        public const string LOG_FILE_NAME = "log.txt";
-
         private readonly IHubContext<DnsmasqQueriesHub> hubContext;
 
         public static string GetLogFilePath()
         {
-            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, LOG_FILE_NAME);
+            return AppDomain.CurrentDomain.BaseDirectory;
         }
 
         public static string[] OldData {
             get {
                 var path = GetLogFilePath();
+                var data = new List<string>();
 
-                if (File.Exists(path)) {
+                foreach(var file in Directory.EnumerateFiles(path, "log*.txt").OrderBy(x => x)) {
                     using (FileStream fileStream = new FileStream(
-                        path,
+                        file,
                         FileMode.Open,
                         FileAccess.Read,
                         FileShare.ReadWrite)) {
                         using (StreamReader streamReader = new StreamReader(fileStream)) {
-                            return streamReader.ReadToEnd().Split(Environment.NewLine);
+                            data.AddRange(streamReader.ReadToEnd().Split(Environment.NewLine));
                         }
                     }
                 }
 
-                return null;
+                return data.ToArray();
             }
         }
 
