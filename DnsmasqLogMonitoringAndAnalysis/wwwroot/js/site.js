@@ -35,7 +35,6 @@
             // check if it is a dnsmasq log and trigger the event if it is
             if (message.substring(0, 50).indexOf('dnsmasq') > 0) {
                 $(document).trigger("dnsmasq", [message, loggedEvent.hidden]);
-
                 return;
             }
         }

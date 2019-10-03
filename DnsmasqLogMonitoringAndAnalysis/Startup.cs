@@ -64,19 +64,30 @@ namespace DnsmasqLogMonitoringAndAnalysis
 
     public class LogMessageRelay
     {
+        public const string LOG_FILE_NAME = "log.txt";
+
         private readonly IHubContext<DnsmasqQueriesHub> hubContext;
 
         public static string GetLogFilePath()
         {
-            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "log.txt");
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, LOG_FILE_NAME);
         }
 
         public static string[] OldData {
             get {
                 var path = GetLogFilePath();
 
-                if (File.Exists(path))
-                    return File.ReadAllLines(path);
+                if (File.Exists(path)) {
+                    using (FileStream fileStream = new FileStream(
+                        path,
+                        FileMode.Open,
+                        FileAccess.Read,
+                        FileShare.ReadWrite)) {
+                        using (StreamReader streamReader = new StreamReader(fileStream)) {
+                            return streamReader.ReadToEnd().Split(Environment.NewLine);
+                        }
+                    }
+                }
 
                 return null;
             }

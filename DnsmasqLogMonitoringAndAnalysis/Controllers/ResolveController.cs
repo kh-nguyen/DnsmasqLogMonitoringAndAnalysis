@@ -42,6 +42,9 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                 if (statusCode == HttpStatusCode.NotFound && protocol != "http")
                     return Description(domain, "http");
 
+                if (statusCode != HttpStatusCode.OK)
+                    return Content(null);
+
                 var metaTags = document.DocumentNode.SelectNodes("//meta");
                 if (metaTags != null) {
                     foreach (var tag in metaTags) {
@@ -52,10 +55,20 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                         }
                     }
                 }
+
+                var titleTag = document.DocumentNode.SelectSingleNode("//title");
+                if (titleTag != null) {
+                    return Content(titleTag.InnerHtml);
+                }
             }
             catch (Exception) { }
 
             return Content(null);
+        }
+
+        public ActionResult Data()
+        {
+            return new JsonResult(LogMessageRelay.OldData);
         }
     }
 }

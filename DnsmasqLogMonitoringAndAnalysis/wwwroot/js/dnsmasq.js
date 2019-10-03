@@ -248,7 +248,7 @@
             resolversOptions: { expand: { hidden: false, sort: { orderBy: 'key', orderReverse: false } }, sum: { totalRequests: 0 } },
             filteredDomainsOptions: { bare_or_www_only: false },
             domains: [],
-            domainsOptions: { expand: { hidden: false, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 5 } },
+            domainsOptions: { expand: { hidden: false, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 10 } },
             isNonRoutableRequest: function (query) {
                 return typeof query.ipaddress === 'undefined'
                     || query.ipaddress === '0.0.0.0'
@@ -263,6 +263,7 @@
             log: function (loggedEvent) {
                 var dnsmasq = $scope.dnsmasq;
                 var REQUESTOR_MAX_RECORDS = 100;
+                var toBeFilledWithDescription = [];
 
                 if ($.inArray($.trim(loggedEvent.requestor), dnsmasq.ignored.data) >= 0) {
                     return;
@@ -334,6 +335,7 @@
                 ++requestor.totalRequests;
                 topDomain.lastRequestTime = loggedEvent.time;
                 requestor.lastRequestTime = loggedEvent.time;
+                toBeFilledWithDescription.push(topDomain);
 
                 var resolver = dnsmasq.resolvers.find(function (x) { return x.key === loggedEvent.resolver; });
                 if (typeof resolver === 'undefined') {
@@ -442,11 +444,23 @@
                 topDomain.lastRequestor = requestor;
 
                 function getDescription(domain, topDomain) {
+                    // skip requesting description while importing saved data
+                    // so that we do not flood the server with too many requests
+                    if (loggedEvent.imported) {
+                        return;
+                    }
+
                     $.get($scope.GetDescriptionUrl, { domain: domain.key })
                     .done(function (data) {
                         if (typeof data !== 'undefined' && data.length > 1) {
+                            data = jQuery('<div />').html(data).text();
+
                             domain.description = data;
                             topDomain.description = data;
+
+                            $.each(toBeFilledWithDescription, function (index, obj) {
+                                obj.description = data;
+                            });
                         }
                     });
                 }
@@ -506,6 +520,24 @@
                         ++chartData.current.queries;
                     }
                 }
+            },
+            loadData: function () {
+                var $this = this;
+
+                $scope.loading_data = true;
+
+                $.get($scope.OldDataUrl).done(function (data) {
+                    $this.data = [];
+                    $this.queries = [];
+                    $this.domains = [];
+
+                    if (typeof data !== 'undefined' && data.length > 1) {
+                        model.OldData = data;
+                        processSavedData();
+                    }
+                }).always(function () {
+                    $scope.loading_data = false;
+                });
             }
         }, model.dnsmasq);
 
@@ -516,9 +548,17 @@
                 return ipAddress;
             }
 
-            storageObject.hostname = dnsmasq.hostnames[ipAddress];
+            var hostname = dnsmasq.hostnames[ipAddress];
 
-            if (typeof storageObject.hostname === 'undefined' || isIP(storageObject.hostname)) {
+            if (typeof hostname === 'object') {
+                hostname.push(storageObject);
+                return;
+            }
+
+            if (typeof hostname === 'undefined' || isIP(hostname)) {
+                var queue = [];
+                dnsmasq.hostnames[ipAddress] = queue;
+
                 $.post($scope.HostnameResolveUrl + '/' + ipAddress, function (data) {
                     if (data !== null && data.endsWith($scope.DomainName)) {
                         data = data.substring(0, data.length - $scope.DomainName.length - 1);
@@ -527,10 +567,14 @@
                     dnsmasq.hostnames[ipAddress] = data;
 
                     $scope.$apply(function () {
-                        storageObject.hostname = data;
+                        $.each(queue, function (index, obj) {
+                            obj.hostname = data;
+                        });
                     });
                 });
             }
+
+            storageObject.hostname = hostname;
 
             function isIP(ipaddress) {
                 return /^(?=\d+\.\d+\.\d+\.\d+$)(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[0-9])\.?){4}$/.test(ipaddress);
@@ -544,7 +588,7 @@
 
         var query = null;
 
-        $(document).on("dnsmasq", function (event, line, hidden) {
+        $(document).on("dnsmasq", function (event, line, imported) {
             if (dnsmasq.dataOptions.pause) {
                 return;
             }
@@ -569,7 +613,7 @@
 
             // write to the raw data table
             //-------------------------------------
-            if (!hidden) {
+            if (!imported) {
                 var message = line.substring(line.indexOf(loggerName) + loggerName.length + 2);
                 var messageSplits = message.split(' ');
 
@@ -612,6 +656,7 @@
                 query.time = timestamp;
                 query.domain = split[baseIndex + 1];
                 query.requestor = split[baseIndex + 3];
+                query.imported = imported;
             } else if (query !== null) {
                 if (cmd === "forwarded") {
                     query.resolver = split[baseIndex + 3];
@@ -654,34 +699,39 @@
             }
         });
 
-        // load old data if any
-        $timeout(function () {
-            if (model.OldData === null || typeof model.OldData === 'undefined') {
-                return;
-            }
-
-            var oldData = model.OldData;
-            $scope.OldDataCount = oldData.length;
-            $scope.OldDataLoadedCount = 0;
-
-            var interval = setInterval(function () {
-                if (oldData.length > 0) {
-                    var loggedEvent = oldData.pop();
-                    System.loggedEvent({ Message: loggedEvent, hidden: true });
-                    $scope.OldDataLoadedCount++;
-                } else {
-                    clearInterval(interval);
-                    model.OldData = null;
-                }
-            }, 5);
-        });
-
         // query for the updated host name of the clients every 15 minutes
         setInterval(function () {
             $.each(dnsmasq.queries, function (index, client) {
                 $scope.networkResolve(client.key, client);
             });
         }, 15 * 60 * 1000);
+
+        // load old data if any
+        $timeout(processSavedData);
+
+        function processSavedData() {
+            if (model.OldData === null || typeof model.OldData === 'undefined') {
+                return;
+            }
+
+            // need to reverse the array to process correctly
+            // the data with time in increasing position
+            var data = model.OldData.reverse();
+
+            $scope.OldDataCount = data.length;
+            $scope.OldDataLoadedCount = 0;
+
+            var interval = setInterval(function () {
+                if (data.length > 0) {
+                    var loggedEvent = data.pop();
+                    System.loggedEvent({ Message: loggedEvent, hidden: true });
+                    $scope.OldDataLoadedCount++;
+                } else {
+                    clearInterval(interval);
+                    model.OldData = null;
+                }
+            });
+        }
     }]);
 
     System.angular.directive('realTimeDataChart', function () {
