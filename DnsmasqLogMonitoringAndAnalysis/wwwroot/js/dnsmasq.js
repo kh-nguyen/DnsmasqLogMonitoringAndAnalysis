@@ -96,7 +96,7 @@
                     }
                 },
                 loadCategories: function () {
-                    var options = this;
+                    var options = dnsmasq.categoriesOptions;
 
                     options.updating = true;
 
@@ -554,6 +554,10 @@
                 }).always(function () {
                     $scope.loading_data = false;
                 });
+            },
+            saveData: function () {
+                var blob = new Blob([JSON.stringify(dnsmasq)], { type: 'application/json' });
+                saveAs(blob, "dnsmasq.txt");
             }
         }, model.dnsmasq);
 

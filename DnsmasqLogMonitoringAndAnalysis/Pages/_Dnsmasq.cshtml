@@ -1,16 +1,17 @@
 ﻿<div class="content-wrapper container-fluid dnsmasq">
     <h3>
-        <span ng-bind="dnsmasq.title"></span>: <span ng-bind="NetworkPort" title="The listening network port"></span>
+        <span ng-if="dnsmasq.title"><span ng-bind="dnsmasq.title"></span>: <span ng-bind="NetworkPort" title="The listening network port"></span></span>
         <mark ng-if="dnsmasq.dataOptions.pause"> pausing...</mark>
         <span class="pull-right">
+            <a class="btn btn-default btn-sm hidden" ng-click="dnsmasq.saveData()" title="Save current data to disk"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span></a>
             <span>
-                <a ng-if="!loading_data && OldDataLoadedCount == OldDataCount" class="btn btn-default btn-sm" ng-click="dnsmasq.loadData()" title="Load saved data">
-                    <span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span>
+                <a ng-if="!loading_data && OldDataLoadedCount == OldDataCount" class="btn btn-default btn-sm" ng-click="dnsmasq.loadData()" title="Load saved data from server">
+                    <span class="glyphicon glyphicon-hdd" aria-hidden="true"></span>
                 </a>
                 <span ng-if="loading_data" class="glyphicon glyphicon-hdd" aria-hidden="true" title="Loading data..."></span>
             </span>
             <a class="btn btn-default btn-sm" ng-click="dnsmasq.clearData()" title="Clear data"><span class="glyphicon glyphicon-erase" aria-hidden="true"></span></a>
-            <a class="btn btn-default btn-sm" ng-click="dnsmasq.dataOptions.pause = !dnsmasq.dataOptions.pause" title="Pause the program"><span class="glyphicon" ng-class="dnsmasq.dataOptions.pause ? 'glyphicon-play' : 'glyphicon-pause'" aria-hidden="true"></span></a>
+            <a class="btn btn-default btn-sm" ng-click="dnsmasq.dataOptions.pause = !dnsmasq.dataOptions.pause" title="Pause the program so incoming data will be skipped"><span class="glyphicon" ng-class="dnsmasq.dataOptions.pause ? 'glyphicon-play' : 'glyphicon-pause'" aria-hidden="true"></span></a>
             <a class="btn btn-default btn-sm" ng-click="dnsmasq.dataOptions.settings = !dnsmasq.dataOptions.settings" title="Show the settings"><span class="glyphicon glyphicon-cog" aria-hidden="true"></span></a>
             <small>Uptime: <span title="{{dnsmasq.startTime}}" am-time-ago="dnsmasq.startTime"></span></small>
         </span>

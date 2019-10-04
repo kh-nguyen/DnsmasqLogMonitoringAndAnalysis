@@ -70,7 +70,7 @@ namespace DnsmasqLogMonitoringAndAnalysis
 
         public static string GetLogFilePath()
         {
-            return AppDomain.CurrentDomain.BaseDirectory;
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
         }
 
         public static string[] OldData {
