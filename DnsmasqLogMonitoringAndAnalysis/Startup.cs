@@ -78,9 +78,12 @@ namespace DnsmasqLogMonitoringAndAnalysis
                 var path = GetLogFilePath();
                 var data = new List<string>();
 
-                foreach(var file in Directory.EnumerateFiles(path, "log*.txt").OrderBy(x => x)) {
+                DirectoryInfo info = new DirectoryInfo(path);
+                FileInfo[] files = info.GetFiles().OrderBy(p => p.CreationTime).ToArray();
+
+                foreach (var file in files) {
                     using (FileStream fileStream = new FileStream(
-                        file,
+                        file.FullName,
                         FileMode.Open,
                         FileAccess.Read,
                         FileShare.ReadWrite)) {
