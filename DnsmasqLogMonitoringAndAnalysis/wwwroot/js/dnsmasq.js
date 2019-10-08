@@ -270,6 +270,7 @@
                 var dnsmasq = $scope.dnsmasq;
                 var REQUESTOR_MAX_RECORDS = 100;
                 var toBeFilledWithDescription = [];
+                var isNewDomain = false;
 
                 if ($.inArray($.trim(loggedEvent.requestor), dnsmasq.ignored.data) >= 0) {
                     return;
@@ -372,6 +373,7 @@
                 }
                 domain = topDomain.records.find(function (x) { return x.key === loggedEvent.domain; });
                 if (typeof domain === 'undefined') {
+                    isNewDomain = true;
                     domain = {
                         key: loggedEvent.domain,
                         totalRequestors: 0,
@@ -381,7 +383,6 @@
                         expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }
                     };
                     topDomain.records.push(domain);
-                    getDescription(domain, topDomain);
                 }
                 requestor = domain.records.find(function (x) { return x.key === loggedEvent.requestor; });
                 if (typeof requestor === 'undefined') {
@@ -446,27 +447,32 @@
                 }
                 requestor.lastRequestTime = loggedEvent.time;
                 domain.lastRequestTime = loggedEvent.time;
+                toBeFilledWithDescription.push(domain);
                 topDomain.lastRequestTime = loggedEvent.time;
                 topDomain.lastRequestor = requestor;
+                toBeFilledWithDescription.push(topDomain);
 
-                function getDescription(domain, topDomain) {
+                if (isNewDomain || typeof domain.description === 'undefined') {
                     // skip requesting description while importing saved data
                     // so that we do not flood the server with too many requests
-                    if (loggedEvent.imported) {
-                        return;
-                    }
+                    if (!(loggedEvent.imported === true)) {
+                        domain.description = "";
 
-                    $.get($scope.GetDescriptionUrl, { domain: domain.key })
+                        getDescription();
+                    }
+                }
+
+                function getDescription() {
+                    $.get($scope.GetDescriptionUrl, { domain: loggedEvent.domain })
                     .done(function (data) {
                         if (typeof data !== 'undefined' && data.length > 1) {
                             data = jQuery('<div />').html(data).text();
 
-                            domain.description = data;
-                            topDomain.description = data;
-
-                            $.each(toBeFilledWithDescription, function (index, obj) {
-                                obj.description = data;
-                            });
+                            if (typeof data !== 'undefined') {
+                                $.each(toBeFilledWithDescription, function (index, obj) {
+                                    obj.description = data;
+                                });
+                            }
                         }
                     });
                 }
