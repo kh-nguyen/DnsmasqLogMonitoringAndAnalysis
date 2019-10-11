@@ -23,3 +23,7 @@
 .dnsmasq .description {
     max-width: 400px;
 }
+
+.dnsmasq .categories {
+    max-width: 200px;
+}

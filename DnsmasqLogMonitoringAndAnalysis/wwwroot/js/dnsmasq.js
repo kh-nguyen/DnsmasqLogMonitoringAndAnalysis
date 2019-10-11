@@ -418,7 +418,7 @@
                     catTopDomain.lastRequestor = requestor;
                     catTopDomain.lastRequestTime = loggedEvent.time;
 
-                    var catDomain = catTopDomain.records.find(function (x) { return x.key === loggedEvent.domain; });
+                    var catDomain = catTopDomain.records.find(function (x) { return x === domain; });
                     if (typeof catDomain === 'undefined') {
                         catTopDomain.records.push(domain);
                     }

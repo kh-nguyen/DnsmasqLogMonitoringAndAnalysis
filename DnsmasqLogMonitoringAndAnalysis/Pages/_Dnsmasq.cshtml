@@ -88,7 +88,7 @@
                                     <span toggle-hidden options="domain.expand"></span>
                                     <span ng-bind="domain.key"></span>
                                 </td>
-                                <td>
+                                <td class="categories">
                                     <ul class="list-inline">
                                         <li ng-repeat="category in domain.categories" ng-class="dnsmasq.categoriesOptions.getClasses(category)" ng-bind="category.name"></li>
                                     </ul>
@@ -239,7 +239,7 @@
                                     <span ng-bind="node.hostname ? node.hostname : node.key"></span>
                                 </td>
                                 <td ng-bind="node.key"></td>
-                                <td>
+                                <td class="categories">
                                     <ul class="list-inline">
                                         <li ng-repeat="category in node.categories" ng-class="dnsmasq.categoriesOptions.getClasses(category)" ng-bind="category.name"></li>
                                     </ul>
