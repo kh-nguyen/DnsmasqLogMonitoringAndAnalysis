@@ -40,11 +40,38 @@
                             </tr>
                         </tbody>
                     </table>
+
+                    <hr />
+
+                    <table class="table table-condensed table-bordered">
+                        <caption>
+                            Queue to request website description
+                            <input type="text" ng-model="dnsmasq.descriptions.input" />
+                            <button class="btn btn-default btn-sm" ng-click="dnsmasq.descriptions.add()"><i class="glyphicon glyphicon-plus"></i></button>
+                            <button class="btn btn-default btn-sm" ng-click="dnsmasq.descriptions.clear()" title="Clear the whole list"><i class="glyphicon glyphicon-trash"></i></button>
+                        </caption>
+                        <thead>
+                            <tr class="info"><th>Domain</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="request in dnsmasq.descriptions.requests | limitTo: dnsmasq.descriptions.expand.limit : ((dnsmasq.descriptions.expand.page - 1) * dnsmasq.descriptions.expand.limit)">
+                                <td ng-bind="request"></td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="5">
+                                    <div table-options-template records="dnsmasq.descriptions.requests" options="dnsmasq.descriptions" dnsmasq="dnsmasq"></div>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
                 </div>
                 <div class="col-xs-12 col-md-6">
                     <div>Local Domain Name: <input type="text" ng-model="DomainName" /></div>
                     <div>IP Address Resolver Url: <input type="text" ng-model="HostnameResolveUrl" /></div>
-                    <div title="Usefully to keep only main domains (www.website.com or website.com) instead of the ones automatically visited by a program on the client's device">Keep bare or WWW domains only: <input type="checkbox" ng-model="dnsmasq.filteredDomainsOptions.bare_or_www_only" /></div>
+                    <div title="Usefully to keep only main domains (www.website.com or website.com) instead of the ones automatically visited by a program on the client's device"><input type="checkbox" ng-model="dnsmasq.domainsOptions.bare_or_www_only" />&nbsp;Keep bare or WWW domains only</div>
+                    <div title="It is usefully that we skip requesting website description while importing saved data so that we do not flood the server with too many requests."><input type="checkbox" ng-model="dnsmasq.domainsOptions.retrieve_website_description_log_files" />&nbsp;Automatically retrieve website description for domains loaded from log files</div>
                 </div>
             </fieldset>
         </div>
@@ -56,7 +83,7 @@
 
     <div class="row">
         <div class="col-xs-12" ng-show="OldDataLoadedCount != OldDataCount">
-            <h6><span class="glyphicon glyphicon-warning-sign"></span> Loading <span ng-bind="OldDataLoadedCount | number"></span> of <span ng-bind="OldDataCount | number"></span> lines...</h6>
+            <h6><span class="glyphicon glyphicon-warning-sign"></span> Loading <span ng-bind="OldDataLoadedCount | number"></span> of <span ng-bind="OldDataCount | number"></span> lines...<button class="btn btn-default btn-sm" ng-click="OldData = []" title="Cancel loading data process"><span class="glyphicon glyphicon-remove" aria-hidden="true"></span></button></h6>
         </div>
 
         <div class="col-xs-12">

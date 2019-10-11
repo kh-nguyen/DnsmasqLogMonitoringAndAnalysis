@@ -34,6 +34,34 @@
                 data: ['0.0.0.0'] // network nodes to be ignored
             },
             hostnames: {}, // resolved hostnames cache
+            descriptions: {
+                requests: [],
+                processingCount: 0,
+                expand: { hidden: true, limit: 10 },
+                add: function () {
+                    var input = this.input;
+
+                    if (input === null) {
+                        return;
+                    }
+
+                    input = $.trim(input);
+
+                    if (!this.requests.find(function (x) { return x === input; })) {
+                        this.requests.push(input);
+                    }
+
+                    this.input = null;
+                },
+                clear: function () {
+                    var requests = this.requests;
+
+                    while (requests.length > 0) {
+                        var request = requests.pop();
+                        delete dnsmasq.descriptions[request];
+                    }
+                }
+            }, // website description cache
             categories: [
                 { name: 'Adware', url: ['https://raw.githubusercontent.com/notracking/hosts-blocklists/master/hostnames.txt', 'https://raw.githubusercontent.com/notracking/hosts-blocklists/master/domains.txt'] },
                 { name: 'Fakenews', url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/fakenews/hosts', classes: 'text-danger' },
@@ -252,9 +280,12 @@
             queriesOptions: { expand: { hidden: true, sort: { orderBy: 'hostname', orderReverse: false }, limit: 50 } },
             resolvers: [],
             resolversOptions: { expand: { hidden: true, sort: { orderBy: 'key', orderReverse: false } }, sum: { totalRequests: 0 } },
-            filteredDomainsOptions: { bare_or_www_only: false },
             domains: [],
-            domainsOptions: { expand: { hidden: false, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 10 } },
+            domainsOptions: {
+                bare_or_www_only: false,
+                retrieve_website_description_log_files: true,
+                expand: { hidden: false, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 10 }
+            },
             isNonRoutableRequest: function (query) {
                 return typeof query.ipaddress === 'undefined'
                     || query.ipaddress === '0.0.0.0'
@@ -281,7 +312,7 @@
                 }
 
                 // apply filters
-                if (dnsmasq.filteredDomainsOptions.bare_or_www_only && !isBareOrWwwDomain(loggedEvent.domain)) {
+                if (dnsmasq.domainsOptions.bare_or_www_only && !isBareOrWwwDomain(loggedEvent.domain)) {
                     return;
                 }
 
@@ -462,28 +493,28 @@
                 toBeFilledWithDescription.push(topDomain);
 
                 if (isNewDomain || typeof domain.description === 'undefined') {
-                    // skip requesting description while importing saved data
-                    // so that we do not flood the server with too many requests
-                    if (!(loggedEvent.imported === true)) {
+                    if (dnsmasq.domainsOptions.retrieve_website_description_log_files === true || !(loggedEvent.imported === true)) {
                         domain.description = "";
-
                         getDescription();
                     }
                 }
 
                 function getDescription() {
-                    $.get($scope.GetDescriptionUrl, { domain: loggedEvent.domain })
-                    .done(function (data) {
-                        if (typeof data !== 'undefined' && data.length > 1) {
-                            data = jQuery('<div />').html(data).text();
+                    var description = dnsmasq.descriptions[loggedEvent.domain];
 
-                            if (typeof data !== 'undefined') {
-                                $.each(toBeFilledWithDescription, function (index, obj) {
-                                    obj.description = data;
-                                });
-                            }
-                        }
-                    });
+                    if (typeof description === 'object') {
+                        description.push(toBeFilledWithDescription);
+                        return;
+                    } else if (typeof description === 'undefined') {
+                        var queue = [];
+                        dnsmasq.descriptions[loggedEvent.domain] = queue;
+                        queue.push(toBeFilledWithDescription);
+                        dnsmasq.descriptions.requests.push(loggedEvent.domain);
+                    } else {
+                        $.each(toBeFilledWithDescription, function (index, obj) {
+                            obj.description = description;
+                        });
+                    }
                 }
 
                 function isBareOrWwwDomain(domain) {
@@ -563,7 +594,7 @@
                     $this.clearData();
 
                     if (typeof data !== 'undefined' && data.length > 1) {
-                        model.OldData = data;
+                        $scope.OldData = data;
                         processSavedData();
                     }
                 }).always(function () {
@@ -749,11 +780,53 @@
             });
         }, 15 * 60 * 1000);
 
+        // query for the website description which processes 10 request at a time
+        setInterval(function () {
+            if (dnsmasq.descriptions.processingCount < 10) {
+                processDescription();
+            }
+        }, 100);
+
         // load old data if any
         $timeout(processSavedData);
 
+        function processDescription() {
+            var requests = dnsmasq.descriptions.requests;
+
+            if (requests.length <= 0) {
+                return;
+            }
+
+            var domain = requests.pop(); // get the last item in the queue
+            var queue = dnsmasq.descriptions[domain];
+
+            if (typeof queue !== 'object') {
+                return;
+            }
+
+            ++dnsmasq.descriptions.processingCount;
+
+            $.get($scope.GetDescriptionUrl, { domain: domain }).done(function (data) {
+                if (typeof data !== 'undefined' && data.length > 1) {
+                    data = jQuery('<div />').html(data).text();
+
+                    dnsmasq.descriptions[domain] = data;
+
+                    if (typeof data !== 'undefined') {
+                        $.each(queue, function (index, subqueue) {
+                            $.each(subqueue, function (index, obj) {
+                                obj.description = data;
+                            });
+                        });
+                    }
+                }
+            }).always(function () {
+                --dnsmasq.descriptions.processingCount;
+            });
+        }
+
         function processSavedData() {
-            if (model.OldData === null || typeof model.OldData !== 'object') {
+            if ($scope.OldData === null || typeof $scope.OldData !== 'object') {
                 return;
             }
 
@@ -763,9 +836,9 @@
 
             // need to reverse the array to process correctly
             // the data with time in increasing position
-            var data = model.OldData.reverse();
+            $scope.OldData = $scope.OldData.reverse();
 
-            $scope.OldDataCount = data.length;
+            $scope.OldDataCount = $scope.OldData.length;
             $scope.OldDataLoadedCount = 0;
 
             var interval = setInterval(function () {
@@ -776,14 +849,18 @@
                 }
             });
 
-            function process () {
+            function process() {
+                var data = $scope.OldData;
+
                 if (data.length > 0) {
                     var loggedEvent = data.pop();
                     System.loggedEvent({ Message: loggedEvent, hidden: true });
                     $scope.OldDataLoadedCount++;
                 } else {
                     clearInterval(interval);
-                    model.OldData = null;
+                    $scope.OldData = [];
+                    $scope.OldDataCount = 0;
+                    $scope.OldDataLoadedCount = 0;
                 }
             }
         }
