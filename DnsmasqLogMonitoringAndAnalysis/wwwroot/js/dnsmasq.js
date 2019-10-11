@@ -150,7 +150,7 @@
                 },
                 add: function (obj) {
                     if (typeof obj.category !== 'undefined') {
-                        return false;
+                        return obj.category;
                     }
 
                     var domainComponents = obj.domain.split('.');
@@ -159,7 +159,7 @@
                         var domain = domainComponents.join('.');
                         var category = dnsmasq.categoriesOptions.data[domain];
 
-                        if (typeof category === 'object') {
+                        if (typeof category !== 'undefined') {
                             obj.category = category;
                             ++category.matches;
                             return category;
@@ -289,6 +289,7 @@
                 if (typeof requestor === 'undefined') {
                     requestor = {
                         key: loggedEvent.requestor,
+                        lastRequestTime: loggedEvent.time,
                         expand: { hidden: true, sort: { orderBy: 'key', orderReverse: true }, limit: 20 },
                         records: [],
                         totalTopDomains: 0,
@@ -306,6 +307,7 @@
                 if (typeof topDomain === 'undefined') {
                     topDomain = {
                         key: topDomainKey,
+                        lastRequestTime: loggedEvent.time,
                         expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 },
                         records: [],
                         totalDomains: 0,
@@ -325,7 +327,7 @@
                 }
                 $.extend(domain, loggedEvent);
                 var categoryObj = dnsmasq.categoriesOptions.add(domain);
-                if (typeof categoryObj === 'object') {
+                if (categoryObj !== false) {
                     var category = topDomain.categories.find(function (x) { return x === domain.category; });
                     if (typeof category === 'undefined') {
                         topDomain.categories.push(domain.category);
@@ -340,8 +342,10 @@
                 ++domain.totalRequests;
                 ++topDomain.totalRequests;
                 ++requestor.totalRequests;
-                topDomain.lastRequestTime = loggedEvent.time;
-                requestor.lastRequestTime = loggedEvent.time;
+                if (requestor.lastRequestTime <= loggedEvent.time) {
+                    topDomain.lastRequestTime = loggedEvent.time;
+                    requestor.lastRequestTime = loggedEvent.time;
+                }
                 toBeFilledWithDescription.push(topDomain);
 
                 var resolver = dnsmasq.resolvers.find(function (x) { return x.key === loggedEvent.resolver; });
@@ -388,8 +392,8 @@
                 if (typeof requestor === 'undefined') {
                     requestor = {
                         key: loggedEvent.requestor,
-                        totalRequests: 0,
                         lastRequestTime: loggedEvent.time,
+                        totalRequests: 0,
                         records: [loggedEvent],
                         expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }
                     };
@@ -403,7 +407,7 @@
                         topDomain.requestors.push(loggedEvent.requestor);
                     }
                 }
-                if (typeof categoryObj === 'object') {
+                if (categoryObj !== false) {
                     var catTopDomainName = getTopDomain(loggedEvent.domain);
 
                     var catTopDomain = categoryObj.records.find(function (x) { return x.key === catTopDomainName; });
@@ -411,12 +415,15 @@
                         catTopDomain = {
                             records: [],
                             key: catTopDomainName,
+                            lastRequestTime: loggedEvent.time,
+                            lastRequestor: requestor,
                             expand: { hidden: true, sort: { orderBy: 'time', orderReverse: true }, limit: 20 }
                         };
                         categoryObj.records.push(catTopDomain);
+                    } else if (catTopDomain.lastRequestTime <= loggedEvent.time) {
+                        catTopDomain.lastRequestor = requestor;
+                        catTopDomain.lastRequestTime = loggedEvent.time;
                     }
-                    catTopDomain.lastRequestor = requestor;
-                    catTopDomain.lastRequestTime = loggedEvent.time;
 
                     var catDomain = catTopDomain.records.find(function (x) { return x === domain; });
                     if (typeof catDomain === 'undefined') {
@@ -445,11 +452,13 @@
                         requestor.records.push(loggedEvent);
                     }
                 }
-                requestor.lastRequestTime = loggedEvent.time;
-                domain.lastRequestTime = loggedEvent.time;
+                if (requestor.lastRequestTime <= loggedEvent.time) {
+                    requestor.lastRequestTime = loggedEvent.time;
+                    domain.lastRequestTime = loggedEvent.time;
+                    topDomain.lastRequestTime = loggedEvent.time;
+                    topDomain.lastRequestor = requestor;
+                }
                 toBeFilledWithDescription.push(domain);
-                topDomain.lastRequestTime = loggedEvent.time;
-                topDomain.lastRequestor = requestor;
                 toBeFilledWithDescription.push(topDomain);
 
                 if (isNewDomain || typeof domain.description === 'undefined') {
@@ -587,6 +596,7 @@
                 queue.push(storageObject);
 
                 $.post($scope.HostnameResolveUrl + '/' + ipAddress, function (data) {
+                    // remove the domain name at the end of the hostname
                     if (data !== null && data.endsWith($scope.DomainName)) {
                         data = data.substring(0, data.length - $scope.DomainName.length - 1);
                     }
@@ -596,6 +606,12 @@
                     $scope.$apply(function () {
                         $.each(queue, function (index, obj) {
                             obj.hostname = data;
+                            if (typeof obj.hostnames === 'undefined') {
+                                obj.hostnames = [];
+                            }
+                            if (obj.hostnames.indexOf(data) === -1) {
+                                obj.hostnames.push(data);
+                            }
                         });
                     });
                 });

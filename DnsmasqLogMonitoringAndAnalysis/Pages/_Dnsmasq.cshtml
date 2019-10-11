@@ -236,7 +236,8 @@
                             <tr ng-repeat-start="node in dnsmasq.queries | filter:dnsmasq.queriesOptions.search | orderBy:dnsmasq.queriesOptions.expand.sort.orderBy:dnsmasq.queriesOptions.expand.sort.orderReverse | limitTo: dnsmasq.queriesOptions.expand.limit" class="animate-row">
                                 <td>
                                     <span toggle-hidden options="node.expand"></span>
-                                    <span ng-bind="node.hostname ? node.hostname : node.key"></span>
+                                    <span ng-if="node.hostnames" ng-repeat-start="hostname in node.hostnames" ng-bind="hostname"></span><span ng-repeat-end ng-if="!$last"><br/></span>
+                                    <span ng-if="!node.hostnames" ng-bind="node.key"></span>
                                 </td>
                                 <td ng-bind="node.key"></td>
                                 <td class="categories">
