@@ -278,9 +278,10 @@
             },
             queries: [],
             queriesOptions: {
-                expand: { hidden: true, sort: { orderBy: 'hostname', orderReverse: false }, limit: 50 },
+                expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 50 },
                 resolveNames: function () {
                     $.each(dnsmasq.queries, function (index, client) {
+                        delete dnsmasq.hostnames[client.key];
                         $scope.networkResolve(client.key, client);
                     });
                 }
@@ -334,7 +335,7 @@
                     requestor = {
                         key: loggedEvent.requestor,
                         lastRequestTime: loggedEvent.time,
-                        expand: { hidden: true, sort: { orderBy: 'key', orderReverse: true }, limit: 20 },
+                        expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 },
                         records: [],
                         totalTopDomains: 0,
                         totalDomains: 0,
@@ -352,7 +353,7 @@
                     topDomain = {
                         key: topDomainKey,
                         lastRequestTime: loggedEvent.time,
-                        expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 },
+                        expand: { hidden: true, sort: { orderBy: 'time', orderReverse: true }, limit: 20 },
                         records: [],
                         totalDomains: 0,
                         totalRequests: 0,
@@ -987,10 +988,10 @@
         return {
             restrict: 'A',
             scope: { options: '=', orderBy: '@', title: '@' },
-            template: "{{title}}<a ng-hide=\"options.orderBy != orderBy\" class=\"pull-right\"><span class=\"glyphicon\" ng-class=\"options.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'\" aria-hidden=\"true\"></span></a>",
+            template: "{{title}}<a ng-hide=\"options.expand.sort.orderBy != orderBy\" class=\"pull-right\"><span class=\"glyphicon\" ng-class=\"options.expand.sort.orderReverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'\" aria-hidden=\"true\"></span></a>",
             link: function (scope, element, attr) {
                 element.on('click', function (event) {
-                    var options = scope.options;
+                    var options = scope.options.expand.sort;
                     var orderBy = scope.orderBy;
 
                     scope.$apply(function () {
