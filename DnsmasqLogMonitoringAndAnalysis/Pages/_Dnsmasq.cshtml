@@ -1,6 +1,6 @@
 ﻿<div class="content-wrapper container-fluid dnsmasq">
     <h3>
-        <span ng-if="dnsmasq.title"><span ng-bind="dnsmasq.title"></span>: <span ng-bind="NetworkPort" title="The listening network port"></span></span>
+        <span ng-if="dnsmasq.title"><span ng-bind="dnsmasq.title"></span>: <span ng-bind="dnsmasq.settings.NetworkPort" title="The listening network port"></span></span>
         <mark ng-if="dnsmasq.dataOptions.pause"> pausing...</mark>
         <span class="pull-right">
             <a class="btn btn-default btn-sm hidden" ng-click="dnsmasq.saveData()" title="Save current data to disk"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span></a>
@@ -9,6 +9,14 @@
                     <span class="glyphicon glyphicon-hdd" aria-hidden="true"></span>
                 </a>
                 <span ng-if="loading_data" class="glyphicon glyphicon-hdd" aria-hidden="true" title="Loading data..."></span>
+            </span>
+            <span ng-show="!loading_data && OldDataLoadedCount == OldDataCount" class="btn btn-primary fileinput-button" title="Click to import dnsmasq log data from a file">
+                <i class="glyphicon glyphicon-upload"></i>
+                <input type="file"
+                       file-reader
+                       accept="text/plain"
+                       ng-model="OldData"
+                       ng-change="dnsmasq.importData()" />
             </span>
             <a class="btn btn-default btn-sm" ng-click="dnsmasq.clearData()" title="Clear data"><span class="glyphicon glyphicon-erase" aria-hidden="true"></span></a>
             <a class="btn btn-default btn-sm" ng-click="dnsmasq.dataOptions.pause = !dnsmasq.dataOptions.pause" title="Pause the program so incoming data will be skipped"><span class="glyphicon" ng-class="dnsmasq.dataOptions.pause ? 'glyphicon-play' : 'glyphicon-pause'" aria-hidden="true"></span></a>
@@ -68,10 +76,12 @@
                     </table>
                 </div>
                 <div class="col-xs-12 col-md-6">
-                    <div>Local Domain Name: <input type="text" ng-model="DomainName" /></div>
-                    <div>IP Address Resolver Url: <input type="text" ng-model="HostnameResolveUrl" /></div>
-                    <div title="Usefully to keep only main domains (www.website.com or website.com) instead of the ones automatically visited by a program on the client's device"><input type="checkbox" ng-model="dnsmasq.domainsOptions.bare_or_www_only" />&nbsp;Keep bare or WWW domains only</div>
-                    <div title="It is usefully that we skip requesting website description while importing saved data so that we do not flood the server with too many requests."><input type="checkbox" ng-model="dnsmasq.domainsOptions.retrieve_website_description_log_files" />&nbsp;Automatically retrieve website description for domains loaded from log files</div>
+                    <div>Local Domain Name: <input type="text" ng-model="dnsmasq.settings.DomainName" /></div>
+                    <div>IP Address Resolver Url: <input type="text" ng-model="dnsmasq.settings.HostnameResolveUrl" /></div>
+                    <div><input type="checkbox" ng-model="dnsmasq.settings.show_raw_data_when_import" />&nbsp;Show raw data when importing log files</div>
+                    <div><input type="checkbox" ng-model="dnsmasq.settings.reset_data_when_load_log_files" />&nbsp;Clear current data when importing log files</div>
+                    <div title="Usefully to keep only main domains (www.website.com or website.com) instead of the ones automatically visited by a program on the client's device"><input type="checkbox" ng-model="dnsmasq.settings.bare_or_www_only" />&nbsp;Keep bare or WWW domains only</div>
+                    <div title="It is usefully that we skip requesting website description while importing saved data so that we do not flood the server with too many requests."><input type="checkbox" ng-model="dnsmasq.settings.retrieve_website_description_log_files" />&nbsp;Automatically retrieve website description for domains loaded from log files</div>
                 </div>
             </fieldset>
         </div>
@@ -94,8 +104,8 @@
                             <span toggle-hidden options="dnsmasq.domainsOptions.expand"></span>
                             Domains: <span ng-bind="dnsmasq.domains.length | number"></span>
                             <span class="pull-right">
-                                <a title="Expand All" ng-click="dnsmasq.domainsOptions.expand.all = !dnsmasq.domainsOptions.expand.all; dnsmasq.setHidden(dnsmasq.domains, !dnsmasq.domainsOptions.expand.all)"><span class="glyphicon" ng-class="dnsmasq.domainsOptions.expand.all ? 'glyphicon-minus' : 'glyphicon-plus'" aria-hidden="true"></span></a>
-                                <a ng-click="dnsmasq.domainsOptions.searchShow = !dnsmasq.domainsOptions.searchShow" title="Search"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
+                                <a class="btn btn-default btn-sm" title="Expand All" ng-click="dnsmasq.domainsOptions.expand.all = !dnsmasq.domainsOptions.expand.all; dnsmasq.setHidden(dnsmasq.domains, !dnsmasq.domainsOptions.expand.all)"><span class="glyphicon" ng-class="dnsmasq.domainsOptions.expand.all ? 'glyphicon-minus' : 'glyphicon-plus'" aria-hidden="true"></span></a>
+                                <a class="btn btn-default btn-sm" title="Search" ng-click="dnsmasq.domainsOptions.searchShow = !dnsmasq.domainsOptions.searchShow"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
                                 <input placeholder="search" ng-show="dnsmasq.domainsOptions.searchShow" ng-model="dnsmasq.domainsOptions.search" />
                             </span>
                         </caption>
@@ -147,7 +157,7 @@
                             <span toggle-hidden options="dnsmasq.resolversOptions.expand"></span>
                             Resolvers: <span ng-bind="dnsmasq.resolvers | keylength | number"></span>
                             <span class="pull-right">
-                                <a ng-click="dnsmasq.resolversOptions.searchShow = !dnsmasq.resolversOptions.searchShow" title="Search"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
+                                <a class="btn btn-default btn-sm" title="Search" ng-click="dnsmasq.resolversOptions.searchShow = !dnsmasq.resolversOptions.searchShow"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
                                 <input placeholder="search" ng-show="dnsmasq.resolversOptions.searchShow" ng-model="dnsmasq.resolversOptions.search" />
                             </span>
                         </caption>
@@ -242,11 +252,12 @@
                         <caption>
                             <span toggle-hidden options="dnsmasq.queriesOptions.expand"></span>
                             Clients: <span ng-bind="dnsmasq.queries | keylength | number"></span>
-                            <span class="pull-right">
-                                <a title="Expand All" ng-click="dnsmasq.queriesOptions.expand.all = !dnsmasq.queriesOptions.expand.all; dnsmasq.setHidden(dnsmasq.queries, !dnsmasq.queriesOptions.expand.all)"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.expand.all ? 'glyphicon-minus' : 'glyphicon-plus'" aria-hidden="true"></span></a>
-                                <a ng-click="dnsmasq.queriesOptions.searchShow = !dnsmasq.queriesOptions.searchShow" title="Search"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
-                                <input placeholder="search" ng-show="dnsmasq.queriesOptions.searchShow" ng-model="dnsmasq.queriesOptions.search" />
-                            </span>
+                                     <span class="pull-right">
+                                         <a class="btn btn-default btn-sm" title="Request to resolve the hostnames of the clients" ng-click="dnsmasq.queriesOptions.resolveNames()"><span class="glyphicon glyphicon-refresh" aria-hidden="true"></span></a>
+                                         <a class="btn btn-default btn-sm" title="Expand All" ng-click="dnsmasq.queriesOptions.expand.all = !dnsmasq.queriesOptions.expand.all; dnsmasq.setHidden(dnsmasq.queries, !dnsmasq.queriesOptions.expand.all)"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.expand.all ? 'glyphicon-minus' : 'glyphicon-plus'" aria-hidden="true"></span></a>
+                                         <a class="btn btn-default btn-sm" title="Search" ng-click="dnsmasq.queriesOptions.searchShow = !dnsmasq.queriesOptions.searchShow"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
+                                         <input placeholder="search" ng-show="dnsmasq.queriesOptions.searchShow" ng-model="dnsmasq.queriesOptions.search" />
+                                     </span>
                         </caption>
                         <thead ng-if="!dnsmasq.queriesOptions.expand.hidden">
                             <tr class="info">
@@ -263,7 +274,7 @@
                             <tr ng-repeat-start="node in dnsmasq.queries | filter:dnsmasq.queriesOptions.search | orderBy:dnsmasq.queriesOptions.expand.sort.orderBy:dnsmasq.queriesOptions.expand.sort.orderReverse | limitTo: dnsmasq.queriesOptions.expand.limit" class="animate-row">
                                 <td>
                                     <span toggle-hidden options="node.expand"></span>
-                                    <span ng-if="node.hostnames" ng-repeat-start="hostname in node.hostnames" ng-bind="hostname"></span><span ng-repeat-end ng-if="!$last"><br/></span>
+                                    <span ng-if="node.hostnames && node.hostnames.length" ng-repeat-start="hostname in node.hostnames" ng-bind="hostname"></span><span ng-repeat-end ng-if="!$last"><br/></span>
                                     <span ng-if="!node.hostnames" ng-bind="node.key"></span>
                                 </td>
                                 <td ng-bind="node.key"></td>
@@ -358,7 +369,7 @@
                     Raw Data:
                     <span ng-bind="dnsmasq.dataOptions.count | number" title="Total number of processed lines"></span>
                     <span class="pull-right">
-                        <a ng-click="dnsmasq.dataOptions.chart.show = !dnsmasq.dataOptions.chart.show" title="Chart"><span class="glyphicon glyphicon glyphicon-signal" aria-hidden="true"></span></a>
+                        <a class="btn btn-default btn-sm" title="Chart" ng-click="dnsmasq.dataOptions.chart.show = !dnsmasq.dataOptions.chart.show"><span class="glyphicon glyphicon glyphicon-signal" aria-hidden="true"></span></a>
                         <span ng-if="dnsmasq.dataOptions.chart.show">
                             Duration:
                             <select ng-change="dnsmasq.dataOptions.chart.element.update({ duration: 0 })"
@@ -366,7 +377,7 @@
                                 <option ng-repeat="duration in dnsmasq.dataOptions.chart.durations" value="{{duration.value}}" ng-bind="duration.name"></option>
                             </select>
                         </span>
-                        <a ng-click="dnsmasq.dataOptions.searchShow = !dnsmasq.dataOptions.searchShow" title="Search"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
+                        <a class="btn btn-default btn-sm" title="Search" ng-click="dnsmasq.dataOptions.searchShow = !dnsmasq.dataOptions.searchShow"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
                         <input placeholder="search" ng-if="dnsmasq.dataOptions.searchShow" ng-model="dnsmasq.dataOptions.search" />
                         Limit:
                         <select ng-options="limit for limit in dnsmasq.limits"

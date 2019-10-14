@@ -64,7 +64,7 @@
             }, // website description cache
             categories: [
                 { name: 'Adware', url: ['https://raw.githubusercontent.com/notracking/hosts-blocklists/master/hostnames.txt', 'https://raw.githubusercontent.com/notracking/hosts-blocklists/master/domains.txt'] },
-                { name: 'Fakenews', url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/fakenews/hosts', classes: 'text-danger' },
+                { name: 'Fakenews', url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/fakenews/hosts', classes: 'text-warning' },
                 { name: 'Gambling', url: ['https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/gambling/hosts', 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/gambling.txt'], classes: 'text-danger' },
                 { name: 'Porn', url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/porn/clefspeare13/hosts', classes: 'text-danger' },
                 { name: 'Social', url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/social/sinfonietta/hosts', classes: 'text-warning' },
@@ -74,7 +74,7 @@
                 { name: 'Chat', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/chat.txt' },
                 { name: 'Dangerous', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/dangerous.txt' },
                 { name: 'Dating', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/dating.txt' },
-                { name: 'Drugs', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/drugs.txt' },
+                { name: 'Drugs', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/drugs.txt', classes: 'text-danger' },
                 { name: 'Games', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/games.txt' },
                 { name: 'Hacking', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/hacking.txt' },
                 { name: 'Malware', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/malware.txt' },
@@ -277,14 +277,25 @@
                 }
             },
             queries: [],
-            queriesOptions: { expand: { hidden: true, sort: { orderBy: 'hostname', orderReverse: false }, limit: 50 } },
+            queriesOptions: {
+                expand: { hidden: true, sort: { orderBy: 'hostname', orderReverse: false }, limit: 50 },
+                resolveNames: function () {
+                    $.each(dnsmasq.queries, function (index, client) {
+                        $scope.networkResolve(client.key, client);
+                    });
+                }
+            },
             resolvers: [],
             resolversOptions: { expand: { hidden: true, sort: { orderBy: 'key', orderReverse: false } }, sum: { totalRequests: 0 } },
             domains: [],
             domainsOptions: {
-                bare_or_www_only: false,
-                retrieve_website_description_log_files: true,
                 expand: { hidden: false, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 10 }
+            },
+            settings: {
+                bare_or_www_only: false,
+                retrieve_website_description_log_files: false,
+                reset_data_when_load_log_files: true,
+                show_raw_data_when_import: false
             },
             isNonRoutableRequest: function (query) {
                 return typeof query.ipaddress === 'undefined'
@@ -294,7 +305,9 @@
             },
             setHidden: function (nodes, value) {
                 $.each(nodes, function (index, node) {
-                    node.hidden = value;
+                    if (node.expand) {
+                        node.expand.hidden = value;
+                    }
                 });
             },
             log: function (loggedEvent) {
@@ -312,7 +325,7 @@
                 }
 
                 // apply filters
-                if (dnsmasq.domainsOptions.bare_or_www_only && !isBareOrWwwDomain(loggedEvent.domain)) {
+                if (dnsmasq.settings.bare_or_www_only && !isBareOrWwwDomain(loggedEvent.domain)) {
                     return;
                 }
 
@@ -493,7 +506,7 @@
                 toBeFilledWithDescription.push(topDomain);
 
                 if (isNewDomain || typeof domain.description === 'undefined') {
-                    if (dnsmasq.domainsOptions.retrieve_website_description_log_files === true || !(loggedEvent.imported === true)) {
+                    if (dnsmasq.settings.retrieve_website_description_log_files === true || !(loggedEvent.imported === true)) {
                         domain.description = "";
                         getDescription();
                     }
@@ -585,21 +598,34 @@
                 this.resolversOptions.sum.totalRequests = 0;
                 this.dataOptions.count = 0;
             },
+            importData: function () {
+                var $this = this;
+
+                $scope.loading_data = true;
+                $scope.OldData = atob($scope.OldData.split(',')[1]);
+                $this.applyData($scope.OldData.split('\n'));
+                $scope.loading_data = false;
+            },
             loadData: function () {
                 var $this = this;
 
                 $scope.loading_data = true;
 
-                $.get($scope.OldDataUrl).done(function (data) {
-                    $this.clearData();
-
-                    if (typeof data !== 'undefined' && data.length > 1) {
-                        $scope.OldData = data;
-                        processSavedData();
-                    }
-                }).always(function () {
+                $.get($this.settings.OldDataUrl).done($this.applyData).always(function () {
                     $scope.loading_data = false;
                 });
+            },
+            applyData: function (data) {
+                if (typeof data === 'undefined' || data.length <= 0) {
+                    return;
+                }
+
+                if (dnsmasq.settings.reset_data_when_load_log_files === true) {
+                    dnsmasq.clearData();
+                }
+
+                $scope.OldData = data;
+                processSavedData();
             },
             saveData: function () {
                 var blob = new Blob([JSON.stringify(dnsmasq)], { type: 'application/json' });
@@ -626,10 +652,10 @@
                 dnsmasq.hostnames[ipAddress] = queue;
                 queue.push(storageObject);
 
-                $.post($scope.HostnameResolveUrl + '/' + ipAddress, function (data) {
+                $.post(dnsmasq.settings.HostnameResolveUrl + '/' + ipAddress, function (data) {
                     // remove the domain name at the end of the hostname
-                    if (data !== null && data.endsWith($scope.DomainName)) {
-                        data = data.substring(0, data.length - $scope.DomainName.length - 1);
+                    if (data !== null && data.endsWith(dnsmasq.settings.DomainName)) {
+                        data = data.substring(0, data.length - dnsmasq.settings.DomainName.length - 1);
                     }
 
                     dnsmasq.hostnames[ipAddress] = data;
@@ -640,7 +666,7 @@
                             if (typeof obj.hostnames === 'undefined') {
                                 obj.hostnames = [];
                             }
-                            if (obj.hostnames.indexOf(data) === -1) {
+                            if (data !== ipAddress && obj.hostnames.indexOf(data) === -1) {
                                 obj.hostnames.push(data);
                             }
                         });
@@ -670,7 +696,7 @@
             var split = line.split(' ')
                 // remove null, undefined and empty
                 .filter(function (e) { return e === 0 || e; });
-            var baseIndex = 4;
+            var baseIndex = 4; // the index of the start of the command data
 
             if (split.length <= baseIndex) {
                 // print the line as is
@@ -682,12 +708,21 @@
                 return;
             }
 
+            // find the start index of the command
+            for (var i = 0; i <= split.length; ++i) {
+                var token = split[i];
+                if (token && token.endsWith(':')) {
+                    baseIndex = i + 1;
+                    break;
+                }
+            }
+
             var timestamp = getDateTime(split);
-            var loggerName = split[3].slice(0, -1); // remove the ':' at the end of the name
 
             // write to the raw data table
             //-------------------------------------
-            if (!imported) {
+            if (!imported || dnsmasq.settings.show_raw_data_when_import) {
+                var loggerName = split[baseIndex - 1].slice(0, -1); // remove the ':' at the end of the name
                 var message = line.substring(line.indexOf(loggerName) + loggerName.length + 2);
                 var messageSplits = message.split(' ');
 
@@ -774,11 +809,7 @@
         });
 
         // query for the updated host name of the clients every 15 minutes
-        setInterval(function () {
-            $.each(dnsmasq.queries, function (index, client) {
-                $scope.networkResolve(client.key, client);
-            });
-        }, 15 * 60 * 1000);
+        setInterval(function () { dnsmasq.queriesOptions.resolveNames(); }, 15 * 60 * 1000);
 
         // query for the website description which processes 10 request at a time
         setInterval(function () {
@@ -806,7 +837,7 @@
 
             ++dnsmasq.descriptions.processingCount;
 
-            $.get($scope.GetDescriptionUrl, { domain: domain }).done(function (data) {
+            $.get(dnsmasq.settings.GetDescriptionUrl, { domain: domain }).done(function (data) {
                 if (typeof data !== 'undefined' && data.length > 1) {
                     data = jQuery('<div />').html(data).text();
 
@@ -835,7 +866,9 @@
             var NUMBER_OF_LINES_PER_INTERVAL = 10;
 
             // need to reverse the array to process correctly
-            // the data with time in increasing position
+            // the data with time in increasing position because
+            // we retrieve each line using pop() which returns
+            // the last line of the array
             $scope.OldData = $scope.OldData.reverse();
 
             $scope.OldDataCount = $scope.OldData.length;
@@ -853,17 +886,61 @@
                 var data = $scope.OldData;
 
                 if (data.length > 0) {
-                    var loggedEvent = data.pop();
+                    var loggedEvent = data.pop(); // get the last line
                     System.loggedEvent({ Message: loggedEvent, hidden: true });
                     $scope.OldDataLoadedCount++;
                 } else {
                     clearInterval(interval);
-                    $scope.OldData = [];
-                    $scope.OldDataCount = 0;
-                    $scope.OldDataLoadedCount = 0;
+                    $scope.$apply(function () {
+                        $scope.OldData = [];
+                        $scope.OldDataCount = 0;
+                        $scope.OldDataLoadedCount = 0;
+                    });
                 }
             }
         }
+    }]);
+
+    System.angular.directive('fileReader', ['$q', function ($q) {
+        var slice = Array.prototype.slice;
+
+        return {
+            restrict: 'A',
+            require: '?ngModel',
+            link: function (scope, element, attrs, ngModel) {
+                if (!ngModel) { return; }
+
+                ngModel.$render = function () { };
+
+                element.bind('change', function (e) {
+                    var target = e.target;
+
+                    $q.all(slice.call(target.files, 0).map(readFile))
+                    .then(function (values) {
+                        if (target.multiple) ngModel.$setViewValue(values);
+                        else ngModel.$setViewValue(values.length ? values[0] : null);
+                        element.val(null); // clear the input when done
+                    });
+
+                    function readFile(file) {
+                        var deferred = $q.defer();
+
+                        var reader = new FileReader();
+                        reader.onload = function (e) {
+                            deferred.resolve(e.target.result);
+                        };
+                        reader.onerror = function (e) {
+                            deferred.reject(e);
+                        };
+                        reader.readAsDataURL(file);
+
+                        return deferred.promise;
+                    }
+
+                }); //change
+
+            } //link
+        }; //return
     }]);
 
     System.angular.directive('realTimeDataChart', function () {
