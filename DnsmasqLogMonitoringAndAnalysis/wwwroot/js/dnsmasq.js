@@ -34,6 +34,9 @@
                 data: ['0.0.0.0'] // network nodes to be ignored
             },
             hostnames: {}, // resolved hostnames cache
+            vendors: {
+                requests: []
+            }, // resolved vendors cache
             descriptions: {
                 requests: [],
                 processingCount: 0,
@@ -769,22 +772,41 @@
                     var hostindex = baseIndex + 4;
                     var hostname = split.length >= hostindex ? split[hostindex] : '';
                     var client = dnsmasq.queries.find(function (x) { return x.key === ip; });
+                    var hostnameObj = null; // will be assigned if client exists
 
                     if (typeof client !== 'undefined') {
                         if (typeof client.hostnames === 'undefined') {
                             client.hostnames = [];
                         }
-                        var obj = client.hostnames.find(function (x) { return x.name === hostname; });
-                        if (typeof obj === 'undefined') {
-                            obj = { mac: mac, name: hostname };
-                            client.hostnames.push(obj);
+                        hostnameObj = client.hostnames.find(function (x) { return x.name === hostname; });
+                        if (typeof hostnameObj === 'undefined') {
+                            hostnameObj = { mac: mac, name: hostname };
+                            client.hostnames.push(hostnameObj);
                         }
-                        obj.mac = mac;
-                        obj.time = timestamp;
+                        hostnameObj.mac = mac;
+                        hostnameObj.time = timestamp;
                     }
 
-                    if (hostname.length) {
+                    if (typeof hostname !== 'undefined' && hostname.length) {
                         dnsmasq.hostnames[ip] = hostname;
+                    }
+
+                    if (typeof mac !== 'undefined' && mac.length) {
+                        var vendor = dnsmasq.vendors[mac];
+                        var hostnameExists = typeof hostnameObj !== 'undefined';
+
+                        if (typeof vendor === 'object' && hostnameExists) {
+                            vendor.push(hostnameObj);
+                        } else if (typeof vendor === 'undefined') {
+                            var queue = [];
+                            if (hostnameExists) {
+                                queue.push(hostnameObj);
+                            }
+                            dnsmasq.vendors[mac] = queue;
+                            dnsmasq.vendors.requests.push(mac);
+                        } else if (hostnameExists) {
+                            hostnameObj.vendor = vendor;
+                        }
                     }
                 }
             }
@@ -853,13 +875,55 @@
             }
         }, 100);
 
+        // query for the device's vendor information and it will process once per second
+        setInterval(processVendorInfo, 1000);
+
         // load old data if any
         $timeout(processSavedData);
 
-        function processDescription() {
-            var requests = dnsmasq.descriptions.requests;
+        function processVendorInfo() {
+            var requests = dnsmasq.vendors.requests;
+            var url = dnsmasq.settings.GetVendorInfoUrl;
 
             if (requests.length <= 0) {
+                return;
+            }
+
+            if (typeof url === 'undefined') {
+                return;
+            }
+
+            var mac = requests.pop(); // get the last item in the queue
+            var queue = dnsmasq.vendors[mac];
+
+            if (typeof queue !== 'object') {
+                return;
+            }
+
+            $.get(url, { mac: mac }).done(function (data) {
+                if (typeof data !== 'undefined' && data.length > 1) {
+                    dnsmasq.vendors[mac] = data;
+
+                    if (typeof data !== 'undefined') {
+                        $.each(queue, function (index, client) {
+                            if (client !== null) {
+                                client.vendor = data;
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        function processDescription() {
+            var requests = dnsmasq.descriptions.requests;
+            var url = dnsmasq.settings.GetDescriptionUrl;
+
+            if (requests.length <= 0) {
+                return;
+            }
+
+            if (typeof url === 'undefined') {
                 return;
             }
 
@@ -872,7 +936,7 @@
 
             ++dnsmasq.descriptions.processingCount;
 
-            $.get(dnsmasq.settings.GetDescriptionUrl, { domain: domain }).done(function (data) {
+            $.get(url, { domain: domain }).done(function (data) {
                 if (typeof data !== 'undefined' && data.length > 1) {
                     data = jQuery('<div />').html(data).text();
 

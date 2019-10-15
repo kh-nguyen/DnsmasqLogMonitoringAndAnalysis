@@ -1,7 +1,9 @@
 ﻿using HtmlAgilityPack;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.IO;
 using System.Net;
+using System.Text;
 
 namespace DnsmasqLogMonitoringAndAnalysis.Controllers
 {
@@ -59,6 +61,21 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                 var titleTag = document.DocumentNode.SelectSingleNode("//title");
                 if (titleTag != null) {
                     return Content(titleTag.InnerHtml);
+                }
+            }
+            catch (Exception) { }
+
+            return Content(null);
+        }
+
+        public ActionResult Vendor(string mac)
+        {
+            try {
+                using (var client = new WebClient())
+                using (var stream = client.OpenRead(string.Format("https://api.macvendors.com/{0}", mac)))
+                using (var textReader = new StreamReader(stream, Encoding.UTF8, true)) {
+                    var vendor = textReader.ReadToEnd();
+                    return Content(vendor);
                 }
             }
             catch (Exception) { }

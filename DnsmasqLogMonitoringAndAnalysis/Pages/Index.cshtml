@@ -5,12 +5,13 @@
 
     var viewModel = new {
         dnsmasq = new {
-            ignored = new { data = new string[] { "192.168.1.0", "192.168.0.80" } },
+            ignored = new { data = new string[] { "127.0.0.1", "192.168.1.0", "192.168.0.80" } },
             settings = new {
                 DomainName = "lan",
                 NetworkPort = Startup.NETWORK_PORT,
                 HostnameResolveUrl = "/api/Resolve/Hostname",
                 GetDescriptionUrl = "/api/Resolve/Description",
+                GetVendorInfoUrl = "/api/Resolve/Vendor",
                 OldDataUrl = "/api/Resolve/Data"
             }
         },

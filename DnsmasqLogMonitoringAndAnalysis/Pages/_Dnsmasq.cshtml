@@ -106,7 +106,7 @@
                             <span class="pull-right">
                                 <a class="btn btn-default btn-sm" title="Expand All" ng-click="dnsmasq.domainsOptions.expand.all = !dnsmasq.domainsOptions.expand.all; dnsmasq.setHidden(dnsmasq.domains, !dnsmasq.domainsOptions.expand.all)"><span class="glyphicon" ng-class="dnsmasq.domainsOptions.expand.all ? 'glyphicon-minus' : 'glyphicon-plus'" aria-hidden="true"></span></a>
                                 <a class="btn btn-default btn-sm" title="Search" ng-click="dnsmasq.domainsOptions.searchShow = !dnsmasq.domainsOptions.searchShow"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
-                                <input placeholder="search" ng-show="dnsmasq.domainsOptions.searchShow" ng-model="dnsmasq.domainsOptions.search" />
+                                <input placeholder="search" ng-if="dnsmasq.domainsOptions.searchShow" ng-model="dnsmasq.domainsOptions.search.key" />
                             </span>
                         </caption>
                         <thead ng-if="!dnsmasq.domainsOptions.expand.hidden">
@@ -120,7 +120,7 @@
                             </tr>
                         </thead>
                         <tbody ng-if="!dnsmasq.domainsOptions.expand.hidden">
-                            <tr ng-repeat-start="domain in dnsmasq.domains | filter:dnsmasq.domainsOptions.search | orderBy:dnsmasq.domainsOptions.expand.sort.orderBy:dnsmasq.domainsOptions.expand.sort.orderReverse | limitTo: dnsmasq.domainsOptions.expand.limit : ((dnsmasq.domainsOptions.expand.page - 1) * dnsmasq.domainsOptions.expand.limit)">
+                            <tr ng-repeat-start="domain in dnsmasq.domains | filter:dnsmasq.domainsOptions.search:false | orderBy:dnsmasq.domainsOptions.expand.sort.orderBy:dnsmasq.domainsOptions.expand.sort.orderReverse | limitTo: dnsmasq.domainsOptions.expand.limit : ((dnsmasq.domainsOptions.expand.page - 1) * dnsmasq.domainsOptions.expand.limit)">
                                 <td>
                                     <span toggle-hidden options="domain.expand"></span>
                                     <span ng-bind="domain.key"></span>
@@ -256,7 +256,7 @@
                                          <a class="btn btn-default btn-sm" title="Request to resolve the hostnames of the clients" ng-click="dnsmasq.queriesOptions.resolveNames()"><span class="glyphicon glyphicon-refresh" aria-hidden="true"></span></a>
                                          <a class="btn btn-default btn-sm" title="Expand All" ng-click="dnsmasq.queriesOptions.expand.all = !dnsmasq.queriesOptions.expand.all; dnsmasq.setHidden(dnsmasq.queries, !dnsmasq.queriesOptions.expand.all)"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.expand.all ? 'glyphicon-minus' : 'glyphicon-plus'" aria-hidden="true"></span></a>
                                          <a class="btn btn-default btn-sm" title="Search" ng-click="dnsmasq.queriesOptions.searchShow = !dnsmasq.queriesOptions.searchShow"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
-                                         <input placeholder="search" ng-show="dnsmasq.queriesOptions.searchShow" ng-model="dnsmasq.queriesOptions.search" />
+                                         <input placeholder="search" ng-show="dnsmasq.queriesOptions.searchShow" ng-model="dnsmasq.queriesOptions.search.key" />
                                      </span>
                         </caption>
                         <thead ng-if="!dnsmasq.queriesOptions.expand.hidden">
@@ -275,6 +275,7 @@
                                     <span toggle-hidden options="node.expand"></span>
                                     <span ng-bind="node.key" title="IP Address"></span>
                                     <div ng-if="node.hostnames.length" ng-repeat-start="hostname in node.hostnames">
+                                        <div ng-bind="hostname.vendor" title="Manufacturer"></div>
                                         <div ng-bind="hostname.mac" title="MAC Address"></div>
                                         <div ng-bind="hostname.name" title="Hostname"></div>
                                     </div>
