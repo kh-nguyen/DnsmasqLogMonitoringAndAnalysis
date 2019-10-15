@@ -261,8 +261,7 @@
                         </caption>
                         <thead ng-if="!dnsmasq.queriesOptions.expand.hidden">
                             <tr class="info">
-                                <th sort-direction options="dnsmasq.queriesOptions" order-by="hostname" title="Node"></th>
-                                <th sort-direction options="dnsmasq.queriesOptions" order-by="key" title="IP Address"></th>
+                                <th sort-direction options="dnsmasq.queriesOptions" order-by="key" title="Node"></th>
                                 <th sort-direction options="dnsmasq.queriesOptions" order-by="categories" title="Categories"></th>
                                 <th sort-direction options="dnsmasq.queriesOptions" order-by="totalTopDomains" title="Top Domains"></th>
                                 <th sort-direction options="dnsmasq.queriesOptions" order-by="totalDomains" title="Sub Domains"></th>
@@ -274,10 +273,13 @@
                             <tr ng-repeat-start="node in dnsmasq.queries | filter:dnsmasq.queriesOptions.search | orderBy:dnsmasq.queriesOptions.expand.sort.orderBy:dnsmasq.queriesOptions.expand.sort.orderReverse | limitTo: dnsmasq.queriesOptions.expand.limit:((dnsmasq.queriesOptions.expand.page - 1) * dnsmasq.queriesOptions.expand.limit)" class="animate-row">
                                 <td>
                                     <span toggle-hidden options="node.expand"></span>
-                                    <span ng-if="node.hostnames.length" ng-repeat-start="hostname in node.hostnames" ng-bind="hostname"></span><span ng-repeat-end ng-if="!$last"><br/></span>
-                                    <span ng-if="!node.hostnames.length" ng-bind="node.key"></span>
+                                    <span ng-bind="node.key" title="IP Address"></span>
+                                    <div ng-if="node.hostnames.length" ng-repeat-start="hostname in node.hostnames">
+                                        <div ng-bind="hostname.mac" title="MAC Address"></div>
+                                        <div ng-bind="hostname.name" title="Hostname"></div>
+                                    </div>
+                                    <br ng-repeat-end ng-if="!$last" />
                                 </td>
-                                <td ng-bind="node.key"></td>
                                 <td class="categories">
                                     <ul class="list-inline">
                                         <li ng-repeat="category in node.categories | orderBy:'name'" ng-class="dnsmasq.categoriesOptions.getClasses(category)" ng-bind="category.name"></li>
@@ -289,7 +291,7 @@
                                 <td title="{{node.lastRequestTime}}" am-time-ago="node.lastRequestTime"></td>
                             </tr>
                             <tr ng-repeat-end ng-if="!node.expand.hidden">
-                                <td colspan="7">
+                                <td colspan="6">
                                     <table class="table table-condensed table-bordered">
                                         <thead>
                                             <tr class="warning">
@@ -365,7 +367,7 @@
                         </tbody>
                         <tfoot ng-if="!dnsmasq.queriesOptions.expand.hidden">
                             <tr>
-                                <td colspan="7">
+                                <td colspan="6">
                                     <div table-options-template records="dnsmasq.queries" options="dnsmasq.queriesOptions" dnsmasq="dnsmasq"></div>
                                 </td>
                             </tr>

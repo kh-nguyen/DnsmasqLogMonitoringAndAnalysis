@@ -661,17 +661,21 @@
 
                     dnsmasq.hostnames[ipAddress] = data;
 
-                    $scope.$apply(function () {
-                        $.each(queue, function (index, obj) {
-                            obj.hostname = data;
-                            if (typeof obj.hostnames === 'undefined') {
-                                obj.hostnames = [];
-                            }
-                            if (data !== ipAddress && obj.hostnames.indexOf(data) === -1) {
-                                obj.hostnames.push(data);
-                            }
+                    if (data !== ipAddress && data.length) {
+                        $scope.$apply(function () {
+                            $.each(queue, function (index, obj) {
+                                obj.hostname = data;
+
+                                if (typeof obj.hostnames === 'undefined') {
+                                    obj.hostnames = [];
+                                }
+                                var hostname = obj.hostnames.find(function (x) { return x.name === data; });
+                                if (typeof hostname === 'undefined') {
+                                    obj.hostnames.push({ name: data, time: new Date() });
+                                }
+                            });
                         });
-                    });
+                    }
                 });
             }
 
@@ -696,7 +700,9 @@
 
             var split = line.split(' ')
                 // remove null, undefined and empty
-                .filter(function (e) { return e === 0 || e; });
+                .filter(function (e) { return e === 0 || e; })
+                // trim the tokens
+                .map(function (e) { return $.trim(e); });
             var baseIndex = 4; // the index of the start of the command data
 
             if (split.length <= baseIndex) {
@@ -719,11 +725,11 @@
             }
 
             var timestamp = getDateTime(split);
+            var loggerName = split[baseIndex - 1].slice(0, -1); // remove the ':' at the end of the name
 
             // write to the raw data table
             //-------------------------------------
             if (!imported || dnsmasq.settings.show_raw_data_when_import) {
-                var loggerName = split[baseIndex - 1].slice(0, -1); // remove the ':' at the end of the name
                 var message = line.substring(line.indexOf(loggerName) + loggerName.length + 2);
                 var messageSplits = message.split(' ');
 
@@ -754,6 +760,34 @@
 
             var queryKey = "query[";
             var cmd = split[baseIndex];
+
+            // DHCP
+            if (loggerName.startsWith('dnsmasq-dhcp')) {
+                if (split[baseIndex + 1].startsWith('DHCPACK')) {
+                    var ip = split[baseIndex + 2];
+                    var mac = split[baseIndex + 3];
+                    var hostindex = baseIndex + 4;
+                    var hostname = split.length >= hostindex ? split[hostindex] : '';
+                    var client = dnsmasq.queries.find(function (x) { return x.key === ip; });
+
+                    if (typeof client !== 'undefined') {
+                        if (typeof client.hostnames === 'undefined') {
+                            client.hostnames = [];
+                        }
+                        var obj = client.hostnames.find(function (x) { return x.name === hostname; });
+                        if (typeof obj === 'undefined') {
+                            obj = { mac: mac, name: hostname };
+                            client.hostnames.push(obj);
+                        }
+                        obj.mac = mac;
+                        obj.time = timestamp;
+                    }
+
+                    if (hostname.length) {
+                        dnsmasq.hostnames[ip] = hostname;
+                    }
+                }
+            }
 
             if (cmd.startsWith(queryKey)) {
                 if (query !== null) {
