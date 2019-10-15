@@ -80,6 +80,7 @@
                     <div>IP Address Resolver Url: <input type="text" ng-model="dnsmasq.settings.HostnameResolveUrl" /></div>
                     <div><input type="checkbox" ng-model="dnsmasq.settings.show_raw_data_when_import" />&nbsp;Show raw data when importing log files</div>
                     <div><input type="checkbox" ng-model="dnsmasq.settings.reset_data_when_load_log_files" />&nbsp;Clear current data when importing log files</div>
+                    <div><input type="checkbox" ng-model="dnsmasq.settings.ignore_data_with_future_date_log_files" />&nbsp;Ignore data with future date when importing log files</div>
                     <div title="Usefully to keep only main domains (www.website.com or website.com) instead of the ones automatically visited by a program on the client's device"><input type="checkbox" ng-model="dnsmasq.settings.bare_or_www_only" />&nbsp;Keep bare or WWW domains only</div>
                     <div title="It is usefully that we skip requesting website description while importing saved data so that we do not flood the server with too many requests."><input type="checkbox" ng-model="dnsmasq.settings.retrieve_website_description_log_files" />&nbsp;Automatically retrieve website description for domains loaded from log files</div>
                 </div>
@@ -312,7 +313,7 @@
                                                 </td>
                                                 <td>
                                                     <ul class="list-inline">
-                                                        <li ng-repeat="category in topdomain.categories | orderBy:'name'" ng-class="category.name != 'adware' ? 'text-warning' : ''" ng-bind="category.name"></li>
+                                                        <li ng-repeat="category in topdomain.categories | orderBy:'name'" ng-class="dnsmasq.categoriesOptions.getClasses(category)" ng-bind="category.name"></li>
                                                     </ul>
                                                 </td>
                                                 <td><span ng-bind="topdomain.totalDomains | number" class="update-item value-{{topdomain.totalDomains}}"></span></td>

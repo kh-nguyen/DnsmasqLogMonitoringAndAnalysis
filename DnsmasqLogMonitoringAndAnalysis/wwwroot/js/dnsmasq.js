@@ -69,15 +69,15 @@
                 { name: 'Adware', url: ['https://raw.githubusercontent.com/notracking/hosts-blocklists/master/hostnames.txt', 'https://raw.githubusercontent.com/notracking/hosts-blocklists/master/domains.txt'] },
                 { name: 'Fakenews', url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/fakenews/hosts', classes: 'text-warning' },
                 { name: 'Gambling', url: ['https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/gambling/hosts', 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/gambling.txt'], classes: 'text-danger' },
-                { name: 'Porn', url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/porn/clefspeare13/hosts', classes: 'text-danger' },
+                { name: 'Porn', url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/porn/clefspeare13/hosts', classes: 'bg-danger' },
                 { name: 'Social', url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/social/sinfonietta/hosts', classes: 'text-warning' },
-                { name: 'Adult', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/adult.txt', classes: 'text-danger' },
+                { name: 'Adult', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/adult.txt', classes: 'bg-danger' },
                 { name: 'Advertising', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/advertising.txt' },
                 { name: 'Cartoons', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/cartoons.txt' },
                 { name: 'Chat', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/chat.txt' },
                 { name: 'Dangerous', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/dangerous.txt' },
                 { name: 'Dating', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/dating.txt' },
-                { name: 'Drugs', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/drugs.txt', classes: 'text-danger' },
+                { name: 'Drugs', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/drugs.txt', classes: 'bg-danger' },
                 { name: 'Games', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/games.txt' },
                 { name: 'Hacking', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/hacking.txt' },
                 { name: 'Malware', url: 'https://raw.githubusercontent.com/jankais3r/Synology-Safe-Access-domain-list/master/malware.txt' },
@@ -297,6 +297,7 @@
             },
             settings: {
                 bare_or_www_only: false,
+                ignore_data_with_future_date_log_files: true,
                 retrieve_website_description_log_files: false,
                 reset_data_when_load_log_files: true,
                 show_raw_data_when_import: false
@@ -321,6 +322,10 @@
                 var isNewDomain = false;
 
                 if ($.inArray($.trim(loggedEvent.requestor), dnsmasq.ignored.data) >= 0) {
+                    return;
+                }
+
+                if (loggedEvent.time > new Date() && loggedEvent.imported && dnsmasq.settings.ignore_data_with_future_date_log_files) {
                     return;
                 }
 
@@ -778,7 +783,7 @@
                         if (typeof client.hostnames === 'undefined') {
                             client.hostnames = [];
                         }
-                        hostnameObj = client.hostnames.find(function (x) { return x.name === hostname; });
+                        hostnameObj = client.hostnames.find(function (x) { return x.name === hostname || x.mac === mac; });
                         if (typeof hostnameObj === 'undefined') {
                             hostnameObj = { mac: mac, name: hostname };
                             client.hostnames.push(hostnameObj);
