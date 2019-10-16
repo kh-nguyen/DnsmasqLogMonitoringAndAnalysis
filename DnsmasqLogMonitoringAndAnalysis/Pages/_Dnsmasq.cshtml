@@ -114,7 +114,7 @@
                             <tr class="info">
                                 <th sort-direction options="dnsmasq.domainsOptions" order-by="key" title="Top Domains"></th>
                                 <th sort-direction options="dnsmasq.domainsOptions" order-by="categories" title="Categories"></th>
-                                <th sort-direction options="dnsmasq.domainsOptions" order-by="requestors" title="Requestors"></th>
+                                <th sort-direction options="dnsmasq.domainsOptions" order-by="requestors.length" title="Requestors"></th>
                                 <th sort-direction options="dnsmasq.domainsOptions" order-by="totalRequests" title="Requests"></th>
                                 <th sort-direction options="dnsmasq.domainsOptions" order-by="lastRequestTime" title="Last Time"></th>
                                 <th sort-direction options="dnsmasq.domainsOptions" order-by="description" title="Last Description"></th>
@@ -337,7 +337,7 @@
                                                         <tbody>
                                                             <tr ng-repeat="query in topdomain.records | orderBy:topdomain.expand.sort.orderBy:topdomain.expand.sort.orderReverse | limitTo: topdomain.expand.limit:((topdomain.expand.page - 1) * topdomain.expand.limit)"
                                                                 ng-class=" dnsmasq.isNonRoutableRequest(query) ? 'text-muted' : (query.resolver == 'cached' ? 'text-success' : '')">
-                                                                <td ng-bind="query.domain"></td>
+                                                                <td ng-bind="query.subdomain ? query.subdomain : query.domain" title="{{query.domain}}"></td>
                                                                 <td ng-bind="query.ipaddress"></td>
                                                                 <td ng-bind="query.resolver"></td>
                                                                 <td ng-bind="query.category.name"></td>
@@ -430,6 +430,7 @@
         <thead>
             <tr class="warning">
                 <th sort-direction options="domains" order-by="key" title="Domain"></th>
+                <th sort-direction options="domains" order-by="category.name" title="Category"></th>
                 <th sort-direction options="domains" order-by="totalRequestors" title="Requestors"></th>
                 <th sort-direction options="domains" order-by="totalRequests" title="Requests"></th>
                 <th sort-direction options="domains" order-by="lastRequestTime" title="Last Time"></th>
@@ -440,15 +441,16 @@
             <tr ng-repeat-start="domain in domains.records | orderBy:domains.expand.sort.orderBy:domains.expand.sort.orderReverse | limitTo: domains.expand.limit:((domains.expand.page - 1) * domains.expand.limit)">
                 <td>
                     <span toggle-hidden options="domain.expand"></span>
-                    <span ng-bind="domain.key"></span>
+                    <span ng-bind="domain.subdomain ? domain.subdomain : domain.key" title="{{domain.key}}"></span>
                 </td>
+                <td ng-bind="domain.category.name"></td>
                 <td><span ng-bind="domain.totalRequestors | number" class="update-item value-{{domain.totalRequestors}}"></span></td>
                 <td><span ng-bind="domain.totalRequests | number" class="update-item value-{{domain.totalRequests}}"></span></td>
-                <td title="{{domain.lastRequestTime}}" am-time-ago="domain.lastRequestTime"></td>
+                <td><span ng-bind="domain.lastRequestor.hostname ? domain.lastRequestor.hostname : domain.lastRequestor.key"></span>: <span title="{{domain.lastRequestTime}}" am-time-ago="domain.lastRequestTime"></span></td>
                 <td class="description"><small ng-bind="domain.description"></small></td>
             </tr>
             <tr ng-repeat-end ng-if="!domain.expand.hidden">
-                <td colspan="5">
+                <td colspan="6">
                     <table class="table table-condensed table-bordered">
                         <thead>
                             <tr>
@@ -495,7 +497,7 @@
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="5">
+                <td colspan="6">
                     <div table-options-template records="domains.records" options="domains" dnsmasq="dnsmasq"></div>
                 </td>
             </tr>

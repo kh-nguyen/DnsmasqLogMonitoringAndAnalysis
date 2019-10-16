@@ -356,6 +356,7 @@
                 }
 
                 var topDomainKey = getTopDomain(loggedEvent.domain);
+                var subDomain = loggedEvent.domain.length > topDomainKey.length ? loggedEvent.domain.substring(0, loggedEvent.domain.length - topDomainKey.length - 1) : null;
                 var topDomain = requestor.records.find(function (x) { return x.key === topDomainKey; });
                 if (typeof topDomain === 'undefined') {
                     topDomain = {
@@ -373,7 +374,7 @@
 
                 var domain = topDomain.records.find(function (x) { return x.domain === loggedEvent.domain; });
                 if (typeof domain === 'undefined') {
-                    domain = { totalRequests: 0 };
+                    domain = { totalRequests: 0, subdomain: subDomain };
                     topDomain.records.push(domain);
                     ++topDomain.totalDomains;
                     ++requestor.totalDomains;
@@ -433,6 +434,7 @@
                     isNewDomain = true;
                     domain = {
                         key: loggedEvent.domain,
+                        subdomain: subDomain,
                         totalRequestors: 0,
                         totalRequests: 0,
                         lastRequestTime: loggedEvent.time,
@@ -482,6 +484,8 @@
                     if (typeof catDomain === 'undefined') {
                         catTopDomain.records.push(domain);
                     }
+
+                    domain.category = categoryObj;
                 }
                 ++requestor.totalRequests;
                 ++domain.totalRequests;
@@ -508,8 +512,13 @@
                 if (requestor.lastRequestTime <= loggedEvent.time) {
                     requestor.lastRequestTime = loggedEvent.time;
                     domain.lastRequestTime = loggedEvent.time;
+                    domain.lastRequestor = requestor;
                     topDomain.lastRequestTime = loggedEvent.time;
                     topDomain.lastRequestor = requestor;
+
+                    if (typeof domain.description !== 'undefined' && domain.description.length) {
+                        topDomain.description = domain.description;
+                    }
                 }
                 toBeFilledWithDescription.push(domain);
                 toBeFilledWithDescription.push(topDomain);
