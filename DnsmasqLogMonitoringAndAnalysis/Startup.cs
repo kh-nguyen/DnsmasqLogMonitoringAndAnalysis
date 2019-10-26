@@ -97,6 +97,18 @@ namespace DnsmasqLogMonitoringAndAnalysis
             }
         }
 
+        public static string[] IgnoredClients {
+            get {
+                var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ignoredclients.txt");
+
+                if (File.Exists(path)) {
+                    return File.ReadAllLines(path);
+                }
+
+                return new string[] { };
+            }
+        }
+
         public LogMessageRelay(IHubContext<DnsmasqQueriesHub> hubContext)
         {
             this.hubContext = hubContext;

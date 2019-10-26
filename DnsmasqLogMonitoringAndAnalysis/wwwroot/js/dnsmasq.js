@@ -297,6 +297,7 @@
             },
             settings: {
                 bare_or_www_only: false,
+                disable_website_description: false,
                 ignore_data_with_future_date_log_files: true,
                 retrieve_website_description_log_files: false,
                 reset_data_when_load_log_files: true,
@@ -930,6 +931,10 @@
         }
 
         function processDescription() {
+            if (dnsmasq.settings.disable_website_description) {
+                return;
+            }
+
             var requests = dnsmasq.descriptions.requests;
             var url = dnsmasq.settings.GetDescriptionUrl;
 
@@ -952,7 +957,8 @@
 
             $.get(url, { domain: domain }).done(function (data) {
                 if (typeof data !== 'undefined' && data.length > 1) {
-                    data = jQuery('<div />').html(data).text();
+                    data = "<img style='width:20px' src='https://"
+                        + domain + "/favicon.ico' alt='' /> " + data;
 
                     dnsmasq.descriptions[domain] = data;
 
