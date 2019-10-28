@@ -176,6 +176,10 @@
                                 if (key === '0.0.0.0' || key === '127.0.0.1') {
                                     key = value[1];
                                 }
+                            } else {
+                                if (key.startsWith('address=')) {
+                                    key = key.split('/')[1];
+                                }
                             }
 
                             if (!(key in dict)) {
