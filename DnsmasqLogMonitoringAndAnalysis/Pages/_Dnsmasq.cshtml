@@ -136,7 +136,7 @@
                             <tr class="info">
                                 <th sort-direction options="dnsmasq.domainsOptions" order-by="key" title="Top Domains"></th>
                                 <th sort-direction options="dnsmasq.domainsOptions" order-by="categories" title="Categories"></th>
-                                <th sort-direction options="dnsmasq.domainsOptions" order-by="requestors.length" title="Requestors"></th>
+                                <th sort-direction options="dnsmasq.domainsOptions" order-by="requestors.length" title="Clients"></th>
                                 <th sort-direction options="dnsmasq.domainsOptions" order-by="totalRequests" title="Requests"></th>
                                 <th sort-direction options="dnsmasq.domainsOptions" order-by="lastRequestTime" title="Last Time"></th>
                                 <th sort-direction options="dnsmasq.domainsOptions" order-by="description" title="Last Description" ng-if="!dnsmasq.settings.disable_website_description"></th>
@@ -219,6 +219,7 @@
                             <tr class="info">
                                 <th sort-direction options="dnsmasq.categoriesOptions" order-by="name" title="Name"></th>
                                 <th sort-direction options="dnsmasq.categoriesOptions" order-by="size" title="DB Count"></th>
+                                <th sort-direction options="dnsmasq.categoriesOptions" order-by="requestors.length" title="Clients"></th>
                                 <th sort-direction options="dnsmasq.categoriesOptions" order-by="records.length" title="Domains"></th>
                                 <th sort-direction options="dnsmasq.categoriesOptions" order-by="hits" title="Hits"></th>
                             </tr>
@@ -230,15 +231,17 @@
                                     <span ng-class="dnsmasq.categoriesOptions.getClasses(category.name)" ng-bind="category.name" title="{{category.url}}"></span>
                                 </td>
                                 <td ng-bind="category.size | number"></td>
+                                <td ng-bind="category.requestors.length | number"></td>
                                 <td ng-bind="category.records.length | number"></td>
                                 <td><span ng-bind="category.hits | number" class="update-item value-{{category.hits}}"></span></td>
                             </tr>
                             <tr ng-repeat-end ng-if="!category.expand.hidden">
-                                <td colspan="4">
+                                <td colspan="5">
                                     <table class="table table-condensed table-bordered">
                                         <thead>
                                             <tr class="info">
                                                 <th sort-direction options="category" order-by="key" title="Name"></th>
+                                                <th sort-direction options="category" order-by="requestors.length" title="Clients"></th>
                                                 <th sort-direction options="category" order-by="records.length" title="Subs"></th>
                                                 <th sort-direction options="category" order-by="lastRequestTime" title="Last Time"></th>
                                             </tr>
@@ -249,16 +252,17 @@
                                                     <span toggle-hidden options="topdomain.expand"></span>
                                                     <span ng-bind="topdomain.key"></span>
                                                 </td>
+                                                <td><span ng-bind="topdomain.requestors.length | number" class="update-item value-{{topdomain.requestors.length}}"></span></td>
                                                 <td><span ng-bind="topdomain.records.length | number" class="update-item value-{{topdomain.records.length}}"></span></td>
                                                 <td><span ng-bind="topdomain.lastRequestor.hostname ? topdomain.lastRequestor.hostname : topdomain.lastRequestor.key"></span>: <span title="{{topdomain.lastRequestTime}}" am-time-ago="topdomain.lastRequestTime"></span></td>
                                             </tr>
                                             <tr ng-repeat-end ng-if="!topdomain.expand.hidden">
-                                                <td colspan="3"><div domains-template domains="topdomain" dnsmasq="dnsmasq"></div></td>
+                                                <td colspan="4"><div domains-template domains="topdomain" dnsmasq="dnsmasq"></div></td>
                                             </tr>
                                         </tbody>
                                         <tfoot>
                                             <tr>
-                                                <td colspan="3">
+                                                <td colspan="4">
                                                     <div table-options-template records="category.records" options="category" dnsmasq="dnsmasq"></div>
                                                 </td>
                                             </tr>

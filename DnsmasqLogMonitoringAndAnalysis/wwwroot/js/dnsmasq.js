@@ -127,6 +127,7 @@
                                 },
                                 size: 0,
                                 records: [],
+                                requestors: [],
                                 hits: 0
                             });
                         });
@@ -186,7 +187,7 @@
                     }
                 },
                 get: function (domainName) {
-                    var domainName = domainName.split('.');
+                    domainName = domainName.split('.');
 
                     while (domainName.length > 1) {
                         var domain = domainName.join('.');
@@ -347,9 +348,9 @@
                     }
                 }
 
-                var requestor = dnsmasq.queries.find(function (x) { return x.key === loggedEvent.requestor; });
-                if (typeof requestor === 'undefined') {
-                    requestor = {
+                var client = dnsmasq.queries.find(function (x) { return x.key === loggedEvent.requestor; });
+                if (typeof client === 'undefined') {
+                    client = {
                         key: loggedEvent.requestor,
                         lastRequestTime: loggedEvent.time,
                         expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 },
@@ -359,14 +360,14 @@
                         totalRequests: 0,
                         categories: []
                     };
-                    dnsmasq.queries.push(requestor);
+                    dnsmasq.queries.push(client);
 
-                    $scope.networkResolve(loggedEvent.requestor, requestor);
+                    $scope.networkResolve(loggedEvent.requestor, client);
                 }
 
                 var topDomainKey = getTopDomain(loggedEvent.domain);
                 var subDomain = loggedEvent.domain.length > topDomainKey.length ? loggedEvent.domain.substring(0, loggedEvent.domain.length - topDomainKey.length - 1) : null;
-                var topDomain = requestor.records.find(function (x) { return x.key === topDomainKey; });
+                var topDomain = client.records.find(function (x) { return x.key === topDomainKey; });
                 if (typeof topDomain === 'undefined') {
                     topDomain = {
                         key: topDomainKey,
@@ -377,8 +378,8 @@
                         totalRequests: 0,
                         categories: []
                     };
-                    requestor.records.push(topDomain);
-                    ++requestor.totalTopDomains;
+                    client.records.push(topDomain);
+                    ++client.totalTopDomains;
                 }
 
                 var domain = topDomain.records.find(function (x) { return x.domain === loggedEvent.domain; });
@@ -386,28 +387,33 @@
                     domain = { totalRequests: 0, subdomain: subDomain };
                     topDomain.records.push(domain);
                     ++topDomain.totalDomains;
-                    ++requestor.totalDomains;
+                    ++client.totalDomains;
                 }
                 $.extend(domain, loggedEvent);
                 if (categoryObj !== false) {
                     domain.category = categoryObj;
+
                     var category = topDomain.categories.find(function (x) { return x === domain.category; });
                     if (typeof category === 'undefined') {
                         topDomain.categories.push(categoryObj);
 
                         // add category to the requester object if not already added
-                        category = requestor.categories.find(function (x) { return x === domain.category; });
+                        category = client.categories.find(function (x) { return x === domain.category; });
                         if (typeof category === 'undefined') {
-                            requestor.categories.push(domain.category);
+                            client.categories.push(domain.category);
                         }
+                    }
+
+                    if (categoryObj.requestors.indexOf(client) === -1) {
+                        categoryObj.requestors.push(client);
                     }
                 }
                 ++domain.totalRequests;
                 ++topDomain.totalRequests;
-                ++requestor.totalRequests;
-                if (requestor.lastRequestTime <= loggedEvent.time) {
+                ++client.totalRequests;
+                if (client.lastRequestTime <= loggedEvent.time) {
                     topDomain.lastRequestTime = loggedEvent.time;
-                    requestor.lastRequestTime = loggedEvent.time;
+                    client.lastRequestTime = loggedEvent.time;
                 }
                 toBeFilledWithDescription.push(topDomain);
 
@@ -452,7 +458,7 @@
                     };
                     topDomain.records.push(domain);
                 }
-                requestor = domain.records.find(function (x) { return x.key === loggedEvent.requestor; });
+                var requestor = domain.records.find(function (x) { return x.key === loggedEvent.requestor; });
                 if (typeof requestor === 'undefined') {
                     requestor = {
                         key: loggedEvent.requestor,
@@ -478,6 +484,7 @@
                     if (typeof catTopDomain === 'undefined') {
                         catTopDomain = {
                             records: [],
+                            requestors: [],
                             key: catTopDomainName,
                             lastRequestTime: loggedEvent.time,
                             lastRequestor: requestor,
@@ -489,9 +496,12 @@
                         catTopDomain.lastRequestTime = loggedEvent.time;
                     }
 
-                    var catDomain = catTopDomain.records.find(function (x) { return x === domain; });
-                    if (typeof catDomain === 'undefined') {
+                    if (catTopDomain.records.indexOf(domain) === -1) {
                         catTopDomain.records.push(domain);
+                    }
+
+                    if (catTopDomain.requestors.indexOf(client) === -1) {
+                        catTopDomain.requestors.push(client);
                     }
 
                     domain.category = categoryObj;
