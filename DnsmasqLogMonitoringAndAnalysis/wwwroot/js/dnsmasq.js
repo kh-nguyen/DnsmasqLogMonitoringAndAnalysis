@@ -7,32 +7,35 @@
         var model = controller.data('model');
         $.extend($scope, model);
 
+        var absIgnore = {
+            add: function () {
+                var input = this.input;
+
+                if (input === null) {
+                    return;
+                }
+
+                input = $.trim(input);
+
+                if (!this.data.find(function (x) { return x === input; })) {
+                    this.data.push(input);
+                }
+
+                this.input = null;
+            },
+            remove: function (value) {
+                this.data.splice(this.data.indexOf(value), 1);
+            }
+        };
+
         var dnsmasq = $scope.dnsmasq = {};
         $.extend(true, dnsmasq, {
             title: 'Dnsmasq Log Real-Time Monitoring And Analysis',
             startTime: new Date(),
             limits: [5, 10, 20, 50, 100, 200, 500, 1000],
-            ignored: {
-                add: function () {
-                    var input = this.input;
-
-                    if (input === null) {
-                        return;
-                    }
-
-                    input = $.trim(input);
-
-                    if (!this.data.find(function (x) { return x === input; })) {
-                        this.data.push(input);
-                    }
-
-                    this.input = null;
-                },
-                remove: function (value) {
-                    this.data.splice(this.data.indexOf(value), 1);
-                },
+            ignored: $.extend({
                 data: ['0.0.0.0'] // network nodes to be ignored
-            },
+            }, absIgnore),
             hostnames: {}, // resolved hostnames cache
             vendors: {
                 requests: []
@@ -93,6 +96,9 @@
             ],
             categoriesOptions: {
                 data: {},
+                ignored: $.extend({
+                    data: ['Advertising', 'Adware'] // categories to be ignored
+                }, absIgnore),
                 expand: { hidden: true, sort: { orderBy: 'name', orderReverse: false } },
                 resetCounter: function () {
                     $.each(dnsmasq.categories, function (index, value) {
@@ -121,7 +127,7 @@
                                 },
                                 size: 0,
                                 records: [],
-                                matches: 0
+                                hits: 0
                             });
                         });
                     }
@@ -179,24 +185,19 @@
                         });
                     }
                 },
-                add: function (obj) {
-                    if (typeof obj.category !== 'undefined') {
-                        return obj.category;
-                    }
+                get: function (domainName) {
+                    var domainName = domainName.split('.');
 
-                    var domainComponents = obj.domain.split('.');
-
-                    while (domainComponents.length > 1) {
-                        var domain = domainComponents.join('.');
+                    while (domainName.length > 1) {
+                        var domain = domainName.join('.');
                         var category = dnsmasq.categoriesOptions.data[domain];
 
                         if (typeof category !== 'undefined') {
-                            obj.category = category;
-                            ++category.matches;
+                            ++category.hits;
                             return category;
                         }
 
-                        domainComponents.shift();
+                        domainName.shift();
                     }
 
                     return false;
@@ -339,6 +340,13 @@
                     return;
                 }
 
+                var categoryObj = dnsmasq.categoriesOptions.get(loggedEvent.domain);
+                if (categoryObj !== false) {
+                    if (dnsmasq.categoriesOptions.ignored.data.indexOf(categoryObj.name) !== -1) {
+                        return;
+                    }
+                }
+
                 var requestor = dnsmasq.queries.find(function (x) { return x.key === loggedEvent.requestor; });
                 if (typeof requestor === 'undefined') {
                     requestor = {
@@ -381,11 +389,11 @@
                     ++requestor.totalDomains;
                 }
                 $.extend(domain, loggedEvent);
-                var categoryObj = dnsmasq.categoriesOptions.add(domain);
                 if (categoryObj !== false) {
+                    domain.category = categoryObj;
                     var category = topDomain.categories.find(function (x) { return x === domain.category; });
                     if (typeof category === 'undefined') {
-                        topDomain.categories.push(domain.category);
+                        topDomain.categories.push(categoryObj);
 
                         // add category to the requester object if not already added
                         category = requestor.categories.find(function (x) { return x === domain.category; });
@@ -838,7 +846,7 @@
                 query.domain = split[baseIndex + 1];
                 query.requestor = split[baseIndex + 3];
                 query.imported = imported;
-            } else if (query !== null) {
+            } else if (query !== null && query.domain === split[baseIndex + 1]) {
                 if (cmd === "forwarded") {
                     query.resolver = split[baseIndex + 3];
                 }

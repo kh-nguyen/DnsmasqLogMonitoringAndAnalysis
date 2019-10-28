@@ -51,6 +51,27 @@
 
                     <hr />
 
+                    <table class="table table-condensed table-bordered">
+                        <caption>
+                            Ignored Categories
+                            <input type="text" ng-model="dnsmasq.categoriesOptions.ignored.input" />
+                            <button class="btn btn-default btn-sm" ng-click="dnsmasq.categoriesOptions.ignored.add()"><i class="glyphicon glyphicon-plus"></i></button>
+                        </caption>
+                        <thead>
+                            <tr class="info"><th>IP Address</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="node in dnsmasq.categoriesOptions.ignored.data">
+                                <td>
+                                    <span ng-bind="node"></span>
+                                    <button class="btn btn-default btn-sm pull-right" ng-click="dnsmasq.categoriesOptions.ignored.remove(node)"><i class="glyphicon glyphicon-remove"></i></button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <hr />
+
                     <table class="table table-condensed table-bordered" ng-if="!dnsmasq.settings.disable_website_description">
                         <caption>
                             Queue to request website description
@@ -198,7 +219,8 @@
                             <tr class="info">
                                 <th sort-direction options="dnsmasq.categoriesOptions" order-by="name" title="Name"></th>
                                 <th sort-direction options="dnsmasq.categoriesOptions" order-by="size" title="DB Count"></th>
-                                <th sort-direction options="dnsmasq.categoriesOptions" order-by="matches" title="Matched"></th>
+                                <th sort-direction options="dnsmasq.categoriesOptions" order-by="records.length" title="Domains"></th>
+                                <th sort-direction options="dnsmasq.categoriesOptions" order-by="hits" title="Hits"></th>
                             </tr>
                         </thead>
                         <tbody ng-if="!dnsmasq.categoriesOptions.expand.hidden">
@@ -208,15 +230,16 @@
                                     <span ng-class="dnsmasq.categoriesOptions.getClasses(category.name)" ng-bind="category.name" title="{{category.url}}"></span>
                                 </td>
                                 <td ng-bind="category.size | number"></td>
-                                <td><span ng-bind="category.matches | number" class="update-item value-{{category.matches}}"></span></td>
+                                <td ng-bind="category.records.length | number"></td>
+                                <td><span ng-bind="category.hits | number" class="update-item value-{{category.hits}}"></span></td>
                             </tr>
                             <tr ng-repeat-end ng-if="!category.expand.hidden">
-                                <td colspan="3">
+                                <td colspan="4">
                                     <table class="table table-condensed table-bordered">
                                         <thead>
                                             <tr class="info">
                                                 <th sort-direction options="category" order-by="key" title="Name"></th>
-                                                <th sort-direction options="category" order-by="records.length" title="Matched"></th>
+                                                <th sort-direction options="category" order-by="records.length" title="Subs"></th>
                                                 <th sort-direction options="category" order-by="lastRequestTime" title="Last Time"></th>
                                             </tr>
                                         </thead>
@@ -432,7 +455,7 @@
             <tr class="warning">
                 <th sort-direction options="domains" order-by="key" title="Domain"></th>
                 <th sort-direction options="domains" order-by="category.name" title="Category"></th>
-                <th sort-direction options="domains" order-by="totalRequestors" title="Requestors"></th>
+                <th sort-direction options="domains" order-by="totalRequestors" title="Clients"></th>
                 <th sort-direction options="domains" order-by="totalRequests" title="Requests"></th>
                 <th sort-direction options="domains" order-by="lastRequestTime" title="Last Time"></th>
                 <th sort-direction options="domains" order-by="description" title="Last Description" ng-if="!dnsmasq.settings.disable_website_description"></th>
