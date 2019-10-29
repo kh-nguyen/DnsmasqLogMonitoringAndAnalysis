@@ -5,7 +5,8 @@
 
     var viewModel = new {
         dnsmasq = new {
-            ignored = new { data = new string[] { "127.0.0.1", "192.168.1.0", "192.168.0.80" }.Concat(LogMessageRelay.IgnoredClients) },
+            ignored = new { data = new string[] { "127.0.0.1", "192.168.1.0", "192.168.0.80" }.Concat(LogMessageRelay.getFile("ignoredclients.txt")) },
+            categoriesOptions = new { ignored = new { data = LogMessageRelay.getFile("ignoredcategories.txt") } },
             settings = new {
                 DomainName = "lan",
                 NetworkPort = Startup.NETWORK_PORT,

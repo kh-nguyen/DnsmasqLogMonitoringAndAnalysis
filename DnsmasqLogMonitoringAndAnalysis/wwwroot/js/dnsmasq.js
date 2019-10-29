@@ -97,7 +97,7 @@
             categoriesOptions: {
                 data: {},
                 ignored: $.extend({
-                    data: ['Advertising', 'Adware'] // categories to be ignored
+                    data: [] // categories to be ignored
                 }, absIgnore),
                 expand: { hidden: true, sort: { orderBy: 'name', orderReverse: false } },
                 resetCounter: function () {

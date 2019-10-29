@@ -97,18 +97,6 @@ namespace DnsmasqLogMonitoringAndAnalysis
             }
         }
 
-        public static string[] IgnoredClients {
-            get {
-                var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ignoredclients.txt");
-
-                if (File.Exists(path)) {
-                    return File.ReadAllLines(path);
-                }
-
-                return new string[] { };
-            }
-        }
-
         public LogMessageRelay(IHubContext<DnsmasqQueriesHub> hubContext)
         {
             this.hubContext = hubContext;
@@ -151,6 +139,17 @@ namespace DnsmasqLogMonitoringAndAnalysis
                     }
                 }
             });
+        }
+
+        public static string[] getFile(string fileName)
+        {
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
+
+            if (File.Exists(path)) {
+                return File.ReadAllLines(path);
+            }
+
+            return new string[] { };
         }
     }
 }

@@ -35,6 +35,7 @@
                             Ignored Clients
                             <input type="text" ng-model="dnsmasq.ignored.input" />
                             <button class="btn btn-default btn-sm" ng-click="dnsmasq.ignored.add()"><i class="glyphicon glyphicon-plus"></i></button>
+                            <span class="pull-right" ng-bind="dnsmasq.ignored.data.length | number" title="the number of ignored items"></span>
                         </caption>
                         <thead>
                             <tr class="info"><th>IP Address</th></tr>
@@ -56,9 +57,10 @@
                             Ignored Categories
                             <input type="text" ng-model="dnsmasq.categoriesOptions.ignored.input" />
                             <button class="btn btn-default btn-sm" ng-click="dnsmasq.categoriesOptions.ignored.add()"><i class="glyphicon glyphicon-plus"></i></button>
+                            <span class="pull-right" ng-bind="dnsmasq.categoriesOptions.ignored.data.length | number" title="the number of ignored items"></span>
                         </caption>
                         <thead>
-                            <tr class="info"><th>IP Address</th></tr>
+                            <tr class="info"><th>Category</th></tr>
                         </thead>
                         <tbody>
                             <tr ng-repeat="node in dnsmasq.categoriesOptions.ignored.data">
@@ -134,7 +136,7 @@
                         </caption>
                         <thead ng-if="!dnsmasq.domainsOptions.expand.hidden">
                             <tr class="info">
-                                <th sort-direction options="dnsmasq.domainsOptions" order-by="key" title="Top Domains"></th>
+                                <th sort-direction options="dnsmasq.domainsOptions" order-by="key" title="Site"></th>
                                 <th sort-direction options="dnsmasq.domainsOptions" order-by="categories" title="Categories"></th>
                                 <th sort-direction options="dnsmasq.domainsOptions" order-by="requestors.length" title="Clients"></th>
                                 <th sort-direction options="dnsmasq.domainsOptions" order-by="totalRequests" title="Requests"></th>
