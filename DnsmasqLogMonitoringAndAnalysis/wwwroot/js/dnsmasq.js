@@ -102,7 +102,9 @@
                 expand: { hidden: true, sort: { orderBy: 'name', orderReverse: false } },
                 resetCounter: function () {
                     $.each(dnsmasq.categories, function (index, value) {
-                        value.matches = 0;
+                        value.hits = 0;
+                        value.records = [];
+                        value.requestors = [];
                     });
                 },
                 load: function () {
@@ -126,9 +128,9 @@
                                     limit: 20
                                 },
                                 size: 0,
+                                hits: 0,
                                 records: [],
-                                requestors: [],
-                                hits: 0
+                                requestors: []
                             });
                         });
                     }
@@ -418,6 +420,7 @@
                 if (client.lastRequestTime <= loggedEvent.time) {
                     topDomain.lastRequestTime = loggedEvent.time;
                     client.lastRequestTime = loggedEvent.time;
+                    client.lastDomain = topDomain;
                 }
                 toBeFilledWithDescription.push(topDomain);
 
@@ -798,7 +801,7 @@
             }
             //-------------------------------------
 
-            var queryKey = "query[";
+            var queryKey = "query[A]";
             var cmd = split[baseIndex];
 
             // DHCP

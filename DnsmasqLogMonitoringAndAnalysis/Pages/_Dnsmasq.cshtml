@@ -6,7 +6,7 @@
             <a class="btn btn-default btn-sm hidden" ng-click="dnsmasq.saveData()" title="Save current data to disk"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span></a>
             <span>
                 <a ng-if="!loading_data && OldDataLoadedCount == OldDataCount" class="btn btn-default btn-sm" ng-click="dnsmasq.loadData()" title="Load saved data from server">
-                    <span class="glyphicon glyphicon-hdd" aria-hidden="true"></span>
+                    <span class="glyphicon glyphicon-open" aria-hidden="true"></span>
                 </a>
                 <span ng-if="loading_data" class="glyphicon glyphicon-hdd" aria-hidden="true" title="Loading data..."></span>
             </span>
@@ -221,8 +221,8 @@
                             <tr class="info">
                                 <th sort-direction options="dnsmasq.categoriesOptions" order-by="name" title="Name"></th>
                                 <th sort-direction options="dnsmasq.categoriesOptions" order-by="size" title="DB Count"></th>
-                                <th sort-direction options="dnsmasq.categoriesOptions" order-by="requestors.length" title="Clients"></th>
                                 <th sort-direction options="dnsmasq.categoriesOptions" order-by="records.length" title="Domains"></th>
+                                <th sort-direction options="dnsmasq.categoriesOptions" order-by="requestors.length" title="Clients"></th>
                                 <th sort-direction options="dnsmasq.categoriesOptions" order-by="hits" title="Hits"></th>
                             </tr>
                         </thead>
@@ -233,8 +233,8 @@
                                     <span ng-class="dnsmasq.categoriesOptions.getClasses(category.name)" ng-bind="category.name" title="{{category.url}}"></span>
                                 </td>
                                 <td ng-bind="category.size | number"></td>
-                                <td ng-bind="category.requestors.length | number"></td>
                                 <td ng-bind="category.records.length | number"></td>
+                                <td ng-bind="category.requestors.length | number"></td>
                                 <td><span ng-bind="category.hits | number" class="update-item value-{{category.hits}}"></span></td>
                             </tr>
                             <tr ng-repeat-end ng-if="!category.expand.hidden">
@@ -242,7 +242,7 @@
                                     <table class="table table-condensed table-bordered">
                                         <thead>
                                             <tr class="info">
-                                                <th sort-direction options="category" order-by="key" title="Name"></th>
+                                                <th sort-direction options="category" order-by="key" title="Site"></th>
                                                 <th sort-direction options="category" order-by="requestors.length" title="Clients"></th>
                                                 <th sort-direction options="category" order-by="records.length" title="Subs"></th>
                                                 <th sort-direction options="category" order-by="lastRequestTime" title="Last Time"></th>
@@ -294,7 +294,7 @@
                             <tr class="info">
                                 <th sort-direction options="dnsmasq.queriesOptions" order-by="key" title="Node"></th>
                                 <th sort-direction options="dnsmasq.queriesOptions" order-by="categories" title="Categories"></th>
-                                <th sort-direction options="dnsmasq.queriesOptions" order-by="totalTopDomains" title="Top Domains"></th>
+                                <th sort-direction options="dnsmasq.queriesOptions" order-by="totalTopDomains" title="Sites"></th>
                                 <th sort-direction options="dnsmasq.queriesOptions" order-by="totalDomains" title="Sub Domains"></th>
                                 <th sort-direction options="dnsmasq.queriesOptions" order-by="totalRequests" title="Requests"></th>
                                 <th sort-direction options="dnsmasq.queriesOptions" order-by="lastRequestTime" title="Last Time"></th>
@@ -320,7 +320,7 @@
                                 <td><span ng-bind="node.totalTopDomains | number" class="update-item value-{{node.totalTopDomains}}"></span></td>
                                 <td><span ng-bind="node.totalDomains | number" class="update-item value-{{node.totalDomains}}"></span></td>
                                 <td><span ng-bind="node.totalRequests | number" class="update-item value-{{node.totalRequests}}"></span></td>
-                                <td title="{{node.lastRequestTime}}" am-time-ago="node.lastRequestTime"></td>
+                                <td><span ng-bind="node.lastDomain.key"></span>: <span title="{{node.lastRequestTime}}" am-time-ago="node.lastRequestTime"></span></td>
                             </tr>
                             <tr ng-repeat-end ng-if="!node.expand.hidden">
                                 <td colspan="6">
