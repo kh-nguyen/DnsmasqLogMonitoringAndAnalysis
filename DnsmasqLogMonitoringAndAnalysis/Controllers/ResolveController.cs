@@ -38,8 +38,8 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                         }
                     }
                 };
-
-                var document = htmlWeb.Load(string.Format("{0}://{1}", protocol, domain));
+                var url = string.Format("{0}://{1}", protocol, domain);
+                var document = htmlWeb.Load(url);
 
                 if (statusCode == HttpStatusCode.NotFound && protocol != "http")
                     return Description(domain, "http");
@@ -47,21 +47,49 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                 if (statusCode != HttpStatusCode.OK)
                     return Content(null);
 
+                string icon = null;
+                string title = null;
+                string description = null;
+
                 var metaTags = document.DocumentNode.SelectNodes("//meta");
                 if (metaTags != null) {
                     foreach (var tag in metaTags) {
-                        if (tag.Attributes["name"] != null
-                            && tag.Attributes["content"] != null
-                            && tag.Attributes["name"].Value == "description") {
-                            return Content(tag.Attributes["content"].Value);
+                        var name = tag.Attributes["name"];
+                        var content = tag.Attributes["content"];
+                        if (name != null && name.Value == "description" && content != null) {
+                            description = content.Value;
+                            break;
+                        }
+                    }
+                }
+
+                var linkTags = document.DocumentNode.SelectNodes("//link");
+                if (linkTags != null) {
+                    foreach (var tag in linkTags) {
+                        var rel = tag.Attributes["rel"];
+                        var href = tag.Attributes["href"];
+                        if (rel != null && rel.Value.Contains("icon") && href != null) {
+                            icon = href.Value;
+                            if (!(icon.StartsWith("http") || icon.StartsWith("//"))) {
+                                if (!icon.StartsWith("/"))
+                                    icon = "/" + icon;
+                                icon = url + icon;
+                            }
+                            break;
                         }
                     }
                 }
 
                 var titleTag = document.DocumentNode.SelectSingleNode("//title");
                 if (titleTag != null) {
-                    return Content(titleTag.InnerHtml);
+                    title = titleTag.InnerHtml;
                 }
+
+                return new JsonResult(new {
+                    icon,
+                    title,
+                    description
+                });
             }
             catch (Exception) { }
 

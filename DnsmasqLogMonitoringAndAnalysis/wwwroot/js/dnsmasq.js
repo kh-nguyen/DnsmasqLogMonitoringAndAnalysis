@@ -981,19 +981,34 @@
             ++dnsmasq.descriptions.processingCount;
 
             $.get(url, { domain: domain }).done(function (data) {
-                if (typeof data !== 'undefined' && data.length > 1) {
-                    data = "<img style='width:20px' src='https://"
-                        + domain + "/favicon.ico' alt='' /> " + data;
+                if (typeof data !== 'object') {
+                    return;
+                }
 
-                    dnsmasq.descriptions[domain] = data;
+                var result = [];
 
-                    if (typeof data !== 'undefined') {
-                        $.each(queue, function (index, subqueue) {
-                            $.each(subqueue, function (index, obj) {
-                                obj.description = data;
-                            });
+                if (data.icon === null) {
+                    data.icon = "https://" + domain + "/favicon.ico";
+                }
+                result.push("<img style='width:20px' src='");
+                result.push(data.icon);
+                result.push("' alt='' /> ");
+
+                if (data.description !== null) {
+                    result.push(data.description);
+                } else if (data.title !== null) {
+                    result.push(data.title);
+                }
+
+                data = result.join('');
+                dnsmasq.descriptions[domain] = data;
+
+                if (typeof data !== 'undefined') {
+                    $.each(queue, function (index, subqueue) {
+                        $.each(subqueue, function (index, obj) {
+                            obj.description = data;
                         });
-                    }
+                    });
                 }
             }).always(function () {
                 --dnsmasq.descriptions.processingCount;
