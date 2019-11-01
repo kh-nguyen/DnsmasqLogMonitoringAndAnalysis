@@ -542,13 +542,6 @@
                     domain.lastRequestor = requestor;
                     topDomain.lastRequestTime = loggedEvent.time;
                     topDomain.lastRequestor = requestor;
-
-                    var description = domain.description;
-                    if (description && typeof description === 'object') {
-                        if (description.description || description.title || description.icon) {
-                            topDomain.description = description;
-                        }
-                    }
                 }
                 toBeFilledWithDescription.push(domain);
                 toBeFilledWithDescription.push(topDomain);
@@ -564,12 +557,10 @@
                     var description = dnsmasq.descriptions[loggedEvent.domain];
 
                     if ($.isArray(description)) {
-                        description.push(toBeFilledWithDescription);
+                        description.push(...toBeFilledWithDescription);
                         return;
                     } else if (typeof description === 'undefined') {
-                        var queue = [];
-                        dnsmasq.descriptions[loggedEvent.domain] = queue;
-                        queue.push(toBeFilledWithDescription);
+                        dnsmasq.descriptions[loggedEvent.domain] = toBeFilledWithDescription;
                         dnsmasq.descriptions.requests.push(loggedEvent.domain);
                     } else {
                         $.each(toBeFilledWithDescription, function (index, obj) {
@@ -843,7 +834,7 @@
             if (cmd.startsWith(queryKey)) {
                 if (query !== null) {
                     // not get a reply ?
-                    dnsmasq.log(query);
+                    done();
                 }
 
                 query = {};
@@ -852,29 +843,36 @@
                 query.domain = split[baseIndex + 1];
                 query.requestor = split[baseIndex + 3];
                 query.imported = imported;
-            } else if (query !== null && query.domain === split[baseIndex + 1]) {
-                if (cmd === "forwarded") {
-                    query.resolver = split[baseIndex + 3];
-                }
-                else if (split[baseIndex + 2] === "is") {
-                    if (cmd !== "reply") {
-                        query.resolver = split[baseIndex];
+            } else if (query !== null) {
+                if (query.domain === split[baseIndex + 1]) {
+                    if (cmd === "forwarded") {
+                        query.resolver = split[baseIndex + 3];
                     }
+                    else if (split[baseIndex + 2] === "is") {
+                        if (cmd !== "reply") {
+                            query.resolver = split[baseIndex];
+                        }
 
+                        query.ipaddress = split[baseIndex + 3];
+
+                        if (query.ipaddress === "<CNAME>") {
+                            query.aliases = [];
+                        }
+                    }
+                } else if (split[baseIndex + 2] === "is" && $.isArray(query.aliases)) {
                     query.ipaddress = split[baseIndex + 3];
-
-                    if (isIP(query.ipaddress)) {
-                        dnsmasq.ipAddresses[query.domain] = query.ipaddress;
-                    }
-
-                    if (query.ipaddress === "<CNAME>") {
-                        // ???
-                    }
-                    else {
-                        dnsmasq.log(query);
-                        query = null;
-                    }
+                    query.aliases.push(split[baseIndex + 1]);
                 }
+
+                if (isIP(query.ipaddress)) {
+                    dnsmasq.ipAddresses[query.domain] = query.ipaddress;
+                    done();
+                }
+            }
+
+            function done() {
+                dnsmasq.log(query);
+                query = null;
             }
 
             function getDateTime(split) {
@@ -915,6 +913,9 @@
         $timeout(processSavedData);
 
         function isIP(ipaddress) {
+            if (ipaddress === null || typeof ipaddress === 'undefined') {
+                return false;
+            }
             return ipaddress.split('.').length === 4;
         }
 
@@ -977,9 +978,8 @@
 
             var ipAddress = dnsmasq.ipAddresses[domain];
 
-            if (ipAddress === '0.0.0.0') {
+            if (typeof ipAddress === 'undefined' || ipAddress === '0.0.0.0') {
                 processResponse(null);
-
                 return;
             }
 
@@ -993,15 +993,20 @@
             function processResponse(data) {
                 data = $.extend({
                     domain: domain,
-                    subdomain: getSubDomain(domain)
+                    subdomain: getSubDomain(domain),
+                    hasDescription: function () {
+                        return this.description || this.title || this.icon;
+                    }
                 }, data);
 
                 dnsmasq.descriptions[domain] = data;
 
-                $.each(queue, function (index, subqueue) {
-                    $.each(subqueue, function (index, obj) {
+                $.each(queue, function (index, obj) {
+                    if (typeof obj.description === 'undefined') {
                         obj.description = data;
-                    });
+                    } else if (data.hasDescription()) {
+                        obj.description = data;
+                    }
                 });
             }
         }

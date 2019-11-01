@@ -160,7 +160,7 @@
                                 <td><span ng-bind="domain.lastRequestor.hostname ? domain.lastRequestor.hostname : domain.lastRequestor.key"></span>: <span title="{{domain.lastRequestTime}}" am-time-ago="domain.lastRequestTime"></span></td>
                                 <td class="description" ng-if="!dnsmasq.settings.disable_website_description">
                                     <div ng-if="domain.description.description || domain.description.title || domain.description.icon">
-                                        <img style='width:20px' ng-src="{{domain.description.icon ? domain.description.icon : 'https://' + domain.description.domain + '/favicon.ico'}}" alt="" />
+                                        <img ng-if="domain.description.icon" style='width:20px' ng-src="{{domain.description.icon}}" alt="" />
                                         <span ng-if="domain.description.subdomain"><span ng-bind="domain.description.subdomain"></span>:</span>
                                         <small ng-bind-html="domain.description.description ? domain.description.description : domain.description.title | html"></small>
                                     </div>
@@ -357,7 +357,7 @@
                                                 <td title="{{topdomain.lastRequestTime}}" am-time-ago="topdomain.lastRequestTime"></td>
                                                 <td class="description" ng-if="!dnsmasq.settings.disable_website_description">
                                                     <div ng-if="topdomain.description.description || topdomain.description.title || topdomain.description.icon">
-                                                        <img style='width:20px' ng-src="{{topdomain.description.icon ? topdomain.description.icon : 'https://' + topdomain.description.domain + '/favicon.ico'}}" alt="" />
+                                                        <img ng-if="topdomain.description.icon" style='width:20px' ng-src="{{topdomain.description.icon}}" alt="" />
                                                         <small ng-bind-html="topdomain.description.description ? topdomain.description.description : topdomain.description.title | html"></small>
                                                     </div>
                                                 </td>
@@ -490,7 +490,7 @@
                 <td><span ng-bind="domain.lastRequestor.hostname ? domain.lastRequestor.hostname : domain.lastRequestor.key"></span>: <span title="{{domain.lastRequestTime}}" am-time-ago="domain.lastRequestTime"></span></td>
                 <td class="description" ng-if="!dnsmasq.settings.disable_website_description">
                     <div ng-if="domain.description.description || domain.description.title || domain.description.icon">
-                        <img style='width:20px' ng-src="{{domain.description.icon ? domain.description.icon : 'https://' + domain.description.domain + '/favicon.ico'}}" alt="" />
+                        <img ng-if="domain.description.icon" style='width:20px' ng-src="{{domain.description.icon}}" alt="" />
                         <small ng-bind-html="domain.description.description ? domain.description.description : domain.description.title | html"></small>
                     </div>
                 </td>

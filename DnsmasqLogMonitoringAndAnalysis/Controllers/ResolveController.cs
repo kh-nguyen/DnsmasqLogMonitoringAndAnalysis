@@ -57,8 +57,6 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                                 using (var responseStream = response.GetResponseStream())
                                 using (var reader = new StreamReader(responseStream, encoding))
                                     document.LoadHtml(reader.ReadToEnd());
-
-                                url = string.Format("{0}://{1}", protocol, domain);
                             }
                         }
                     }
@@ -73,14 +71,14 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                 if (statusCode != HttpStatusCode.OK)
                     return Content(null);
 
-                return Description(document, url);
+                return Description(document, url, domain);
             }
             catch (Exception) { }
 
             return Content(null);
         }
 
-        private ActionResult Description(HtmlDocument document, string url)
+        private ActionResult Description(HtmlDocument document, string url, string domain)
         {
             string icon = null;
             string title = null;
@@ -108,10 +106,14 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                     var href = tag.Attributes["href"];
                     if (rel != null && rel.Value.Contains("icon") && href != null) {
                         icon = href.Value;
-                        if (!(icon.StartsWith("http") || icon.StartsWith("//") || icon.StartsWith("data:"))) {
-                            if (!icon.StartsWith("/"))
-                                icon = "/" + icon;
-                            icon = url + icon;
+                        if (!icon.StartsWith("data:")) {
+                            if (icon.StartsWith("//"))
+                                icon = url.Substring(0, url.IndexOf("//")) + icon;
+                            else if (icon.StartsWith("/"))
+                                icon = url + icon;
+                            else if (!icon.StartsWith("http"))
+                                icon = url + "/" + icon;
+                            icon = DownloadIcon(icon, domain);
                         }
                         break;
                     }
@@ -123,11 +125,47 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                 title = titleTag.InnerHtml;
             }
 
+            // download the icon from the default location if the icon
+            // cannot be retrieved from the document
+            if (icon == null) {
+                icon = DownloadIcon(url + "/favicon.ico", domain);
+            }
+
             return new JsonResult(new {
                 icon,
                 title,
                 description
             });
+        }
+
+        private string DownloadIcon(string url, string domain)
+        {
+            var request = (HttpWebRequest)WebRequest.Create(url);
+
+            // note: if the url contains the hostname then it may leak DNS requests from the web server
+            if (request.Host.Split(".").Length == 4) // check if it is an IP
+                request.Host = domain;
+
+            try {
+                using (var response = (HttpWebResponse)request.GetResponse()) {
+                    if (response.StatusCode == HttpStatusCode.OK) {
+                        if (string.IsNullOrEmpty(response.ContentType) || response.ContentType.StartsWith("text"))
+                            return null;
+
+                        using (var ms = new MemoryStream())
+                        using (var responseStream = response.GetResponseStream()) {
+                            responseStream.CopyTo(ms);
+                            if (ms.Length > 1) {
+                                return string.Format("data:{0};base64,{1}",
+                                    response.ContentType, Convert.ToBase64String(ms.ToArray()));
+                            }
+                        }
+                    }
+                }
+            }
+            catch (WebException) { }
+
+            return null;
         }
 
         public ActionResult Vendor(string mac)
