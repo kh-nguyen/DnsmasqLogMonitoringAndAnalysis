@@ -36,6 +36,7 @@
             ignored: $.extend({
                 data: ['0.0.0.0'] // network nodes to be ignored
             }, absIgnore),
+            ipAddresses: {},
             hostnames: {}, // resolved hostnames cache
             vendors: {
                 requests: []
@@ -372,7 +373,7 @@
                 }
 
                 var topDomainKey = getTopDomain(loggedEvent.domain);
-                var subDomain = loggedEvent.domain.length > topDomainKey.length ? loggedEvent.domain.substring(0, loggedEvent.domain.length - topDomainKey.length - 1) : null;
+                var subDomain = getSubDomain(loggedEvent.domain, topDomainKey);
                 var topDomain = client.records.find(function (x) { return x.key === topDomainKey; });
                 if (typeof topDomain === 'undefined') {
                     topDomain = {
@@ -542,8 +543,11 @@
                     topDomain.lastRequestTime = loggedEvent.time;
                     topDomain.lastRequestor = requestor;
 
-                    if (typeof domain.description !== 'undefined' && domain.description.length) {
-                        topDomain.description = domain.description;
+                    var description = domain.description;
+                    if (description && typeof description === 'object') {
+                        if (description.description || description.title || description.icon) {
+                            topDomain.description = description;
+                        }
                     }
                 }
                 toBeFilledWithDescription.push(domain);
@@ -551,7 +555,7 @@
 
                 if (isNewDomain || typeof domain.description === 'undefined') {
                     if (dnsmasq.settings.retrieve_website_description_log_files === true || !(loggedEvent.imported === true)) {
-                        domain.description = "";
+                        domain.description = null;
                         getDescription();
                     }
                 }
@@ -559,7 +563,7 @@
                 function getDescription() {
                     var description = dnsmasq.descriptions[loggedEvent.domain];
 
-                    if (typeof description === 'object') {
+                    if ($.isArray(description)) {
                         description.push(toBeFilledWithDescription);
                         return;
                     } else if (typeof description === 'undefined') {
@@ -592,17 +596,6 @@
                     }
 
                     return true;
-                }
-
-                function getTopDomain(domain) {
-                    var domainComponents = domain.split('.');
-
-                    if (domainComponents.length <= 1) {
-                        return domain;
-                    }
-
-                    return domainComponents[domainComponents.length - 2]
-                        + '.' + domainComponents[domainComponents.length - 1];
                 }
             },
             dataAdd: function (row) {
@@ -686,7 +679,7 @@
 
             var hostname = dnsmasq.hostnames[ipAddress];
 
-            if (typeof hostname === 'object') {
+            if ($.isArray(hostname)) {
                 hostname.push(storageObject);
                 return;
             }
@@ -723,10 +716,6 @@
             }
 
             storageObject.hostname = hostname;
-
-            function isIP(ipaddress) {
-                return /^(?=\d+\.\d+\.\d+\.\d+$)(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]|[0-9])\.?){4}$/.test(ipaddress);
-            }
         };
 
         // load category lists
@@ -833,9 +822,9 @@
 
                     if (typeof mac !== 'undefined' && mac.length) {
                         var vendor = dnsmasq.vendors[mac];
-                        var hostnameExists = typeof hostnameObj !== 'undefined';
+                        var hostnameExists = hostnameObj && typeof hostnameObj !== 'undefined';
 
-                        if (typeof vendor === 'object' && hostnameExists) {
+                        if ($.isArray(vendor) && hostnameExists) {
                             vendor.push(hostnameObj);
                         } else if (typeof vendor === 'undefined') {
                             var queue = [];
@@ -873,6 +862,10 @@
                     }
 
                     query.ipaddress = split[baseIndex + 3];
+
+                    if (isIP(query.ipaddress)) {
+                        dnsmasq.ipAddresses[query.domain] = query.ipaddress;
+                    }
 
                     if (query.ipaddress === "<CNAME>") {
                         // ???
@@ -920,6 +913,10 @@
 
         // load old data if any
         $timeout(processSavedData);
+
+        function isIP(ipaddress) {
+            return ipaddress.split('.').length === 4;
+        }
 
         function processVendorInfo() {
             var requests = dnsmasq.vendors.requests;
@@ -974,45 +971,39 @@
             var domain = requests.pop(); // get the last item in the queue
             var queue = dnsmasq.descriptions[domain];
 
-            if (typeof queue !== 'object') {
+            if (!$.isArray(queue)) {
+                return;
+            }
+
+            var ipAddress = dnsmasq.ipAddresses[domain];
+
+            if (ipAddress === '0.0.0.0') {
+                processResponse(null);
+
                 return;
             }
 
             ++dnsmasq.descriptions.processingCount;
 
-            $.get(url, { domain: domain }).done(function (data) {
-                if (typeof data !== 'object') {
-                    return;
-                }
-
-                var result = [];
-
-                if (data.icon === null) {
-                    data.icon = "https://" + domain + "/favicon.ico";
-                }
-                result.push("<img style='width:20px' src='");
-                result.push(data.icon);
-                result.push("' alt='' /> ");
-
-                if (data.description !== null) {
-                    result.push(data.description);
-                } else if (data.title !== null) {
-                    result.push(data.title);
-                }
-
-                data = result.join('');
-                dnsmasq.descriptions[domain] = data;
-
-                if (typeof data !== 'undefined') {
-                    $.each(queue, function (index, subqueue) {
-                        $.each(subqueue, function (index, obj) {
-                            obj.description = data;
-                        });
-                    });
-                }
-            }).always(function () {
+            $.get(url, { domain: domain, ipAddress: ipAddress })
+            .done(processResponse).always(function () {
                 --dnsmasq.descriptions.processingCount;
             });
+
+            function processResponse(data) {
+                data = $.extend({
+                    domain: domain,
+                    subdomain: getSubDomain(domain)
+                }, data);
+
+                dnsmasq.descriptions[domain] = data;
+
+                $.each(queue, function (index, subqueue) {
+                    $.each(subqueue, function (index, obj) {
+                        obj.description = data;
+                    });
+                });
+            }
         }
 
         function processSavedData() {
@@ -1057,6 +1048,27 @@
                     });
                 }
             }
+        }
+
+        function getTopDomain(domain) {
+            var domainComponents = domain.split('.');
+
+            if (domainComponents.length <= 1) {
+                return domain;
+            }
+
+            return domainComponents[domainComponents.length - 2]
+                + '.' + domainComponents[domainComponents.length - 1];
+        }
+
+        function getSubDomain(domain, topDomainKey) {
+            if (typeof topDomainKey === 'undefined') {
+                topDomainKey = getTopDomain(domain);
+            }
+
+            return domain.length > topDomainKey.length
+                ? domain.substring(0, domain.length - topDomainKey.length - 1)
+                : null;
         }
     }]);
 
