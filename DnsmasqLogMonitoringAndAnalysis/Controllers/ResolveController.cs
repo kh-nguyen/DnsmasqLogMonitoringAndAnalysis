@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Text;
 
@@ -131,10 +132,13 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                 icon = DownloadIcon(url + "/favicon.ico", domain);
             }
 
+            string bodyText = document.DocumentNode.SelectSingleNode("//body").ToPlainText();
+
             return new JsonResult(new {
                 icon,
                 title,
-                description
+                description,
+                bodyText
             });
         }
 
@@ -149,7 +153,7 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
             try {
                 using (var response = (HttpWebResponse)request.GetResponse()) {
                     if (response.StatusCode == HttpStatusCode.OK) {
-                        if (string.IsNullOrEmpty(response.ContentType) || response.ContentType.StartsWith("text"))
+                        if (string.IsNullOrEmpty(response.ContentType) || !response.ContentType.StartsWith("image"))
                             return null;
 
                         using (var ms = new MemoryStream())

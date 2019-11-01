@@ -557,7 +557,7 @@
                     var description = dnsmasq.descriptions[loggedEvent.domain];
 
                     if ($.isArray(description)) {
-                        description.push(...toBeFilledWithDescription);
+                        Array.prototype.push.apply(description, toBeFilledWithDescription);
                         return;
                     } else if (typeof description === 'undefined') {
                         dnsmasq.descriptions[loggedEvent.domain] = toBeFilledWithDescription;
