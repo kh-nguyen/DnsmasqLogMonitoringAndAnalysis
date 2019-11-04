@@ -28,6 +28,12 @@
             }
         };
 
+        var abstractDescription = {
+            hasDescription: function () {
+                return this.description || this.title || this.icon;
+            }
+        };
+
         var dnsmasq = $scope.dnsmasq = {};
         $.extend(true, dnsmasq, {
             title: 'Dnsmasq Log Real-Time Monitoring And Analysis',
@@ -374,7 +380,7 @@
                 }
 
                 var topDomainKey = getTopDomain(loggedEvent.domain);
-                var subDomain = getSubDomain(loggedEvent.domain, topDomainKey);
+                var subDomainKey = getSubDomain(loggedEvent.domain, topDomainKey);
                 var topDomain = client.records.find(function (x) { return x.key === topDomainKey; });
                 if (typeof topDomain === 'undefined') {
                     topDomain = {
@@ -393,7 +399,7 @@
 
                 var domain = topDomain.records.find(function (x) { return x.domain === loggedEvent.domain; });
                 if (typeof domain === 'undefined') {
-                    domain = { totalRequests: 0, subdomain: subDomain, icon: dnsmasq.icons[loggedEvent.domain] };
+                    domain = { totalRequests: 0, subdomain: subDomainKey, icon: dnsmasq.icons[loggedEvent.domain] };
                     topDomain.records.push(domain);
                     ++topDomain.totalDomains;
                     ++client.totalDomains;
@@ -460,7 +466,7 @@
                     isNewDomain = true;
                     domain = {
                         key: loggedEvent.domain,
-                        subdomain: subDomain,
+                        subdomain: subDomainKey,
                         totalRequestors: 0,
                         totalRequests: 0,
                         icon: dnsmasq.icons[loggedEvent.domain],
@@ -551,10 +557,8 @@
                 toBeFilledWithDescription.push(topDomain);
 
                 if (isNewDomain || typeof domain.description === 'undefined') {
-                    if (dnsmasq.settings.retrieve_website_description_log_files === true || !(loggedEvent.imported === true)) {
-                        domain.description = null;
-                        getDescription();
-                    }
+                    domain.description = null;
+                    getDescription();
                 }
 
                 function getDescription() {
@@ -564,9 +568,21 @@
                         Array.prototype.push.apply(description, toBeFilledWithDescription);
                         return;
                     } else if (typeof description === 'undefined') {
-                        dnsmasq.descriptions[loggedEvent.domain] = toBeFilledWithDescription;
-                        dnsmasq.descriptions.requests.push(loggedEvent.domain);
+                        if (dnsmasq.settings.retrieve_website_description_log_files === true || !(loggedEvent.imported === true)) {
+                            dnsmasq.descriptions[loggedEvent.domain] = toBeFilledWithDescription;
+                            dnsmasq.descriptions.requests.push(loggedEvent.domain);
+                        }
                     } else {
+                        if (typeof description === 'string') {
+                            description = $.extend({
+                                domain: loggedEvent.domain,
+                                topdomain: topDomainKey,
+                                subdomain: subDomainKey,
+                                icon: dnsmasq.icons[loggedEvent.domain],
+                                description: description
+                            }, abstractDescription);
+                            dnsmasq.descriptions[loggedEvent.domain] = description;
+                        }
                         fillDescription(toBeFilledWithDescription, description);
                     }
                 }
@@ -998,11 +1014,8 @@
                 data = $.extend({
                     domain: domain,
                     topdomain: topdomain,
-                    subdomain: getSubDomain(domain, topdomain),
-                    hasDescription: function () {
-                        return this.description || this.title || this.icon;
-                    }
-                }, data);
+                    subdomain: getSubDomain(domain, topdomain)
+                }, abstractDescription, data);
 
                 dnsmasq.descriptions[domain] = data;
 

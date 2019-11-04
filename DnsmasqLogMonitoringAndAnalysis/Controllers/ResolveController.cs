@@ -30,6 +30,11 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
         public ActionResult Description(string domain, string ipAddress, string protocol = "https")
         {
             try {
+                ServicePointManager.SecurityProtocol
+                    = SecurityProtocolType.Tls
+                    | SecurityProtocolType.Tls11
+                    | SecurityProtocolType.Tls12;
+
                 HttpStatusCode statusCode = HttpStatusCode.OK;
                 HtmlDocument document = new HtmlDocument();
                 string url = null;
