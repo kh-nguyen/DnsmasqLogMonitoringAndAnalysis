@@ -45,3 +45,7 @@
     direction: ltr;
     cursor: pointer;
 }
+
+.dnsmasq .icon {
+    width: 20px;
+}

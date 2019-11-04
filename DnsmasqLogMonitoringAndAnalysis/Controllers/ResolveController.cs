@@ -132,6 +132,10 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                 icon = DownloadIcon(url + "/favicon.ico", domain);
             }
 
+            if (!string.IsNullOrEmpty(description)) {
+                LogMessageRelay.StoreDescription(domain, description);
+            }
+
             string bodyText = document.DocumentNode.SelectSingleNode("//body").ToPlainText();
 
             return new JsonResult(new {
@@ -160,8 +164,11 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                         using (var responseStream = response.GetResponseStream()) {
                             responseStream.CopyTo(ms);
                             if (ms.Length > 1) {
-                                return string.Format("data:{0};base64,{1}",
-                                    response.ContentType, Convert.ToBase64String(ms.ToArray()));
+                                var bytes = ms.ToArray();
+                                LogMessageRelay.StoreIcon(domain, response.ContentType, bytes);
+                                var icon = string.Format("data:{0};base64,{1}",
+                                    response.ContentType, Convert.ToBase64String(bytes));
+                                return icon;
                             }
                         }
                     }

@@ -148,6 +148,7 @@
                             <tr ng-repeat-start="domain in dnsmasq.domains | filter:dnsmasq.domainsOptions.search:false | orderBy:dnsmasq.domainsOptions.expand.sort.orderBy:dnsmasq.domainsOptions.expand.sort.orderReverse | limitTo: dnsmasq.domainsOptions.expand.limit : ((dnsmasq.domainsOptions.expand.page - 1) * dnsmasq.domainsOptions.expand.limit)">
                                 <td>
                                     <span toggle-hidden options="domain.expand"></span>
+                                    <img ng-if="domain.icon" class="icon" ng-src="{{domain.icon}}" alt="" />
                                     <span ng-bind="domain.key"></span>
                                 </td>
                                 <td class="categories">
@@ -160,7 +161,7 @@
                                 <td><span ng-bind="domain.lastRequestor.hostname ? domain.lastRequestor.hostname : domain.lastRequestor.key"></span>: <span title="{{domain.lastRequestTime}}" am-time-ago="domain.lastRequestTime"></span></td>
                                 <td class="description" ng-if="!dnsmasq.settings.disable_website_description">
                                     <div ng-if="domain.description.description || domain.description.title || domain.description.icon" title="{{domain.description.bodyText}}">
-                                        <img ng-if="domain.description.icon" style='width:20px' ng-src="{{domain.description.icon}}" alt="" />
+                                        <img ng-if="domain.description.icon" class="icon" ng-src="{{domain.description.icon}}" alt="" />
                                         <span ng-if="domain.description.subdomain"><span ng-bind="domain.description.subdomain"></span>:</span>
                                         <small ng-bind-html="domain.description.description ? domain.description.description : domain.description.title | html"></small>
                                     </div>
@@ -258,6 +259,7 @@
                                             <tr ng-repeat-start="topdomain in category.records | orderBy:category.expand.sort.orderBy:category.expand.sort.orderReverse | limitTo: category.expand.limit:((category.expand.page - 1) * category.expand.limit)">
                                                 <td>
                                                     <span toggle-hidden options="topdomain.expand"></span>
+                                                    <img ng-if="topdomain.icon" class="icon" ng-src="{{topdomain.icon}}" alt="" />
                                                     <span ng-bind="topdomain.key"></span>
                                                 </td>
                                                 <td><span ng-bind="topdomain.requestors.length | number" class="update-item value-{{topdomain.requestors.length}}"></span></td>
@@ -326,7 +328,11 @@
                                 <td><span ng-bind="node.totalTopDomains | number" class="update-item value-{{node.totalTopDomains}}"></span></td>
                                 <td><span ng-bind="node.totalDomains | number" class="update-item value-{{node.totalDomains}}"></span></td>
                                 <td><span ng-bind="node.totalRequests | number" class="update-item value-{{node.totalRequests}}"></span></td>
-                                <td><span ng-bind="node.lastDomain.key"></span>: <span title="{{node.lastRequestTime}}" am-time-ago="node.lastRequestTime"></span></td>
+                                <td>
+                                    <img ng-if="node.lastDomain.icon || node.lastDomain.description.icon" class="icon" ng-src="{{node.lastDomain.icon ? node.lastDomain.icon : node.lastDomain.description.icon}}" alt="" />
+                                    <span ng-bind="node.lastDomain.key"></span>:
+                                    <span title="{{node.lastRequestTime}}" am-time-ago="node.lastRequestTime"></span>
+                                </td>
                             </tr>
                             <tr ng-repeat-end ng-if="!node.expand.hidden">
                                 <td colspan="6">
@@ -345,6 +351,7 @@
                                             <tr ng-repeat-start="topdomain in node.records | filter:dnsmasq.queriesOptions.search | orderBy:node.expand.sort.orderBy:node.expand.sort.orderReverse | limitTo: node.expand.limit:((node.expand.page - 1) * node.expand.limit)">
                                                 <td>
                                                     <span toggle-hidden options="topdomain.expand"></span>
+                                                    <img ng-if="topdomain.icon" class="icon" ng-src="{{topdomain.icon}}" alt="" />
                                                     <span ng-bind="topdomain.key"></span>
                                                 </td>
                                                 <td>
@@ -357,7 +364,7 @@
                                                 <td title="{{topdomain.lastRequestTime}}" am-time-ago="topdomain.lastRequestTime"></td>
                                                 <td class="description" ng-if="!dnsmasq.settings.disable_website_description">
                                                     <div ng-if="topdomain.description.description || topdomain.description.title || topdomain.description.icon" title="{{topdomain.description.bodyText}}">
-                                                        <img ng-if="topdomain.description.icon" style='width:20px' ng-src="{{topdomain.description.icon}}" alt="" />
+                                                        <img ng-if="topdomain.description.icon" class="icon" ng-src="{{topdomain.description.icon}}" alt="" />
                                                         <small ng-bind-html="topdomain.description.description ? topdomain.description.description : topdomain.description.title | html"></small>
                                                     </div>
                                                 </td>
@@ -490,7 +497,7 @@
                 <td><span ng-bind="domain.lastRequestor.hostname ? domain.lastRequestor.hostname : domain.lastRequestor.key"></span>: <span title="{{domain.lastRequestTime}}" am-time-ago="domain.lastRequestTime"></span></td>
                 <td class="description" ng-if="!dnsmasq.settings.disable_website_description" title="{{domain.description.bodyText}}">
                     <div ng-if="domain.description.description || domain.description.title || domain.description.icon">
-                        <img ng-if="domain.description.icon" style='width:20px' ng-src="{{domain.description.icon}}" alt="" />
+                        <img ng-if="domain.description.icon" class="icon" ng-src="{{domain.description.icon}}" alt="" />
                         <small ng-bind-html="domain.description.description ? domain.description.description : domain.description.title | html"></small>
                     </div>
                 </td>

@@ -7,7 +7,7 @@
         var model = controller.data('model');
         $.extend($scope, model);
 
-        var absIgnore = {
+        var abstractIgnore = {
             add: function () {
                 var input = this.input;
 
@@ -35,12 +35,13 @@
             limits: [5, 10, 20, 50, 100, 200, 500, 1000],
             ignored: $.extend({
                 data: ['0.0.0.0'] // network nodes to be ignored
-            }, absIgnore),
+            }, abstractIgnore),
             ipAddresses: {},
             hostnames: {}, // resolved hostnames cache
             vendors: {
                 requests: []
             }, // resolved vendors cache
+            icons: {}, // website's icon cache
             descriptions: {
                 requests: [],
                 processingCount: 0,
@@ -99,7 +100,7 @@
                 data: {},
                 ignored: $.extend({
                     data: [] // categories to be ignored
-                }, absIgnore),
+                }, abstractIgnore),
                 expand: { hidden: true, sort: { orderBy: 'name', orderReverse: false } },
                 resetCounter: function () {
                     $.each(dnsmasq.categories, function (index, value) {
@@ -379,6 +380,7 @@
                     topDomain = {
                         key: topDomainKey,
                         lastRequestTime: loggedEvent.time,
+                        icon: getIconTopDomain(topDomainKey),
                         expand: { hidden: true, sort: { orderBy: 'time', orderReverse: true }, limit: 20 },
                         records: [],
                         totalDomains: 0,
@@ -391,7 +393,7 @@
 
                 var domain = topDomain.records.find(function (x) { return x.domain === loggedEvent.domain; });
                 if (typeof domain === 'undefined') {
-                    domain = { totalRequests: 0, subdomain: subDomain };
+                    domain = { totalRequests: 0, subdomain: subDomain, icon: dnsmasq.icons[loggedEvent.domain] };
                     topDomain.records.push(domain);
                     ++topDomain.totalDomains;
                     ++client.totalDomains;
@@ -446,6 +448,7 @@
                         categories: categories,
                         totalRequests: 0,
                         lastRequestTime: loggedEvent.time,
+                        icon: getIconTopDomain(topDomainKey),
                         requestors: [],
                         records: [],
                         expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }
@@ -460,6 +463,7 @@
                         subdomain: subDomain,
                         totalRequestors: 0,
                         totalRequests: 0,
+                        icon: dnsmasq.icons[loggedEvent.domain],
                         lastRequestTime: loggedEvent.time,
                         records: [],
                         expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }
@@ -563,9 +567,7 @@
                         dnsmasq.descriptions[loggedEvent.domain] = toBeFilledWithDescription;
                         dnsmasq.descriptions.requests.push(loggedEvent.domain);
                     } else {
-                        $.each(toBeFilledWithDescription, function (index, obj) {
-                            obj.description = description;
-                        });
+                        fillDescription(toBeFilledWithDescription, description);
                     }
                 }
 
@@ -991,9 +993,12 @@
             });
 
             function processResponse(data) {
+                var topdomain = getTopDomain(domain);
+
                 data = $.extend({
                     domain: domain,
-                    subdomain: getSubDomain(domain),
+                    topdomain: topdomain,
+                    subdomain: getSubDomain(domain, topdomain),
                     hasDescription: function () {
                         return this.description || this.title || this.icon;
                     }
@@ -1001,14 +1006,27 @@
 
                 dnsmasq.descriptions[domain] = data;
 
-                $.each(queue, function (index, obj) {
-                    if (typeof obj.description === 'undefined') {
-                        obj.description = data;
-                    } else if (data.hasDescription()) {
-                        obj.description = data;
-                    }
-                });
+                fillDescription(queue, data);
             }
+        }
+
+        function fillDescription(queue, data) {
+            $.each(queue, function (index, obj) {
+                if (typeof obj.description === 'undefined') {
+                    obj.description = data;
+                } else if (data.hasDescription()) {
+                    obj.description = data;
+                }
+
+                if (typeof data.icon === 'string') {
+                    dnsmasq.icons[data.domain] = data.icon;
+
+                    if (data.subdomain === null || data.subdomain === 'www') {
+                        dnsmasq.icons[data.topdomain] = data.icon;
+                        obj.icon = data.icon;
+                    }
+                }
+            });
         }
 
         function processSavedData() {
@@ -1074,6 +1092,14 @@
             return domain.length > topDomainKey.length
                 ? domain.substring(0, domain.length - topDomainKey.length - 1)
                 : null;
+        }
+
+        function getIconTopDomain(topdomain) {
+            var icon = dnsmasq.icons[topdomain];
+            if (typeof icon === 'string') {
+                return icon;
+            }
+            return dnsmasq.icons['www.' + topdomain];
         }
     }]);
 

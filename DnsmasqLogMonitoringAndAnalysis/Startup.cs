@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -53,7 +53,7 @@ namespace DnsmasqLogMonitoringAndAnalysis
 
             app.UseMvc();
 
-            log4net.GlobalContext.Properties["LogFilePath"] = LogMessageRelay.GetLogFilePath();
+            log4net.GlobalContext.Properties["LogDirPath"] = LogMessageRelay.LogDirPath;
             loggerFactory.AddLog4Net();
 
             if (string.IsNullOrEmpty(NETWORK_PORT))
@@ -68,14 +68,13 @@ namespace DnsmasqLogMonitoringAndAnalysis
     {
         private readonly IHubContext<DnsmasqQueriesHub> hubContext;
 
-        public static string GetLogFilePath()
-        {
-            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
-        }
+        public static readonly string IconsDirPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "icons");
+        public static readonly string DescriptionsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "descriptions.txt");
+        public static readonly string LogDirPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
 
         public static string[] OldData {
             get {
-                var path = GetLogFilePath();
+                var path = LogDirPath;
                 var data = new List<string>();
 
                 DirectoryInfo info = new DirectoryInfo(path);
@@ -96,6 +95,32 @@ namespace DnsmasqLogMonitoringAndAnalysis
                 return data.ToArray();
             }
         }
+
+        public static Dictionary<string, string> IconsStorage {
+            get {
+                var icons = new Dictionary<string, string>();
+
+                if (!Directory.Exists(IconsDirPath))
+                    return icons;
+
+                DirectoryInfo info = new DirectoryInfo(IconsDirPath);
+
+                foreach (var file in info.GetFiles()) {
+                    var contentType = GetMimeType(file.Extension);
+                    var domain = Path.GetFileNameWithoutExtension(file.Name);
+                    var icon = string.Format("data:{0};base64,{1}", contentType,
+                        Convert.ToBase64String(File.ReadAllBytes(file.FullName)));
+                    icons.Add(domain, icon);
+                }
+
+                return icons;
+            }
+        }
+
+        public static Dictionary<string, string> DescriptionsStorage = File.Exists(DescriptionsFilePath)
+            ? JsonConvert.DeserializeObject<Dictionary<string, string>>(string.Format("{{{0}}}",
+                string.Join(",", File.ReadAllLines(DescriptionsFilePath).Where(x => !string.IsNullOrEmpty(x)))))
+            : new Dictionary<string, string>();
 
         public LogMessageRelay(IHubContext<DnsmasqQueriesHub> hubContext)
         {
@@ -141,7 +166,7 @@ namespace DnsmasqLogMonitoringAndAnalysis
             });
         }
 
-        public static string[] getFile(string fileName)
+        public static string[] GetFile(string fileName)
         {
             var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
 
@@ -150,6 +175,88 @@ namespace DnsmasqLogMonitoringAndAnalysis
             }
 
             return new string[] { };
+        }
+
+        public static void StoreIcon(string domain, string contentType, byte[] data)
+        {
+            Directory.CreateDirectory(IconsDirPath);
+            var fileName = string.Format("{0}{1}", domain, GetExtension(contentType));
+            fileName = Path.Combine(IconsDirPath, fileName);
+            if (File.Exists(fileName)) {
+                if (File.ReadAllBytes(fileName).SequenceEqual(data))
+                    return;
+            }
+            File.WriteAllBytes(fileName, data);
+        }
+
+        public static void StoreDescription(string domain, string description)
+        {
+            StoreValue(domain, description, DescriptionsStorage, DescriptionsFilePath);
+        }
+
+        private static void StoreValue(string key, string value, Dictionary<string, string> storage, string filePath)
+        {
+            try
+            {
+                lock (storage)
+                {
+                    if (storage.ContainsKey(key))
+                    {
+                        if (storage[key].GetHashCode() != value.GetHashCode())
+                        {
+                            storage[key] = value;
+
+                            File.WriteAllText(filePath, StripBrackets(JsonConvert.SerializeObject(storage)));
+                        }
+
+                        return;
+                    }
+
+                    storage.Add(key, value);
+
+                    var json = GetLine(new Dictionary<string, string> { { key, value } });
+                    File.AppendAllText(filePath, json);
+                }
+            }
+            catch (Exception) { }
+        }
+
+        private static string GetLine(object data)
+        {
+            var json = JsonConvert.SerializeObject(data);
+            json = StripBrackets(json);
+            return json + Environment.NewLine;
+        }
+
+        private static string StripBrackets(string json)
+        {
+            json = json.Substring(1); // remove {
+            json = json.Substring(0, json.Length - 1); // remove }
+            json = json.Trim();
+            return json;
+        }
+
+        private static string GetExtension(string contentType)
+        {
+            try
+            {
+                return MimeTypeMap.List.MimeTypeMap.GetExtension(contentType).First();
+            } catch (Exception)
+            {
+                return ".ico";
+            }
+        }
+
+        private static string GetMimeType(string extension)
+        {
+            try
+            {
+                return MimeTypeMap.List.MimeTypeMap.GetMimeType(extension).First();
+            }
+            catch (Exception)
+            {
+                return "application/octet-stream";
+            }
         }
     }
 }
