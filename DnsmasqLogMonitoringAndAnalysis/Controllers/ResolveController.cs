@@ -35,6 +35,8 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                     | SecurityProtocolType.Tls11
                     | SecurityProtocolType.Tls12;
 
+                ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
+
                 HttpStatusCode statusCode = HttpStatusCode.OK;
                 HtmlDocument document = new HtmlDocument();
                 string url = null;
