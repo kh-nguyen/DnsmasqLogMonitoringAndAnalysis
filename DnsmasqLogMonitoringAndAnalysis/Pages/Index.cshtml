@@ -6,6 +6,8 @@
     var viewModel = new {
         dnsmasq = new {
             icons = LogMessageRelay.IconsStorage,
+            vendors = LogMessageRelay.VendorsStorage,
+            descriptions = LogMessageRelay.DescriptionsStorage,
             ignored = new { data = new string[] { "127.0.0.1" }.Concat(LogMessageRelay.GetFile("ignoredclients.txt")) },
             categoriesOptions = new { ignored = new { data = LogMessageRelay.GetFile("ignoredcategories.txt") } },
             settings = new {

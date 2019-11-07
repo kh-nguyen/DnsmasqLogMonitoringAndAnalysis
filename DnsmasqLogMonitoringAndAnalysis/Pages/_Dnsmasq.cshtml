@@ -158,7 +158,7 @@
                                 </td>
                                 <td><span ng-bind="domain.requestors.length | number"></span></td>
                                 <td><span ng-bind="domain.totalRequests | number" class="update-item value-{{domain.totalRequests}}"></span></td>
-                                <td><span ng-bind="domain.lastRequestor.hostname ? domain.lastRequestor.hostname : domain.lastRequestor.key"></span>: <span title="{{domain.lastRequestTime}}" am-time-ago="domain.lastRequestTime"></span></td>
+                                <td><span ng-bind="domain.lastRequestor.hostname ? domain.lastRequestor.hostname : domain.lastRequestor.key" title="{{domain.lastRequestor.key}}"></span>: <span title="{{domain.lastRequestTime}}" am-time-ago="domain.lastRequestTime"></span></td>
                                 <td class="description" ng-if="!dnsmasq.settings.disable_website_description">
                                     <div ng-if="domain.description.description || domain.description.title || domain.description.icon" title="{{domain.description.bodyText}}">
                                         <img ng-if="domain.description.icon" class="icon" ng-src="{{domain.description.icon}}" alt="" />
@@ -463,9 +463,9 @@
                         <td title="{{row.time}}" am-time-ago="row.time"></td>
                         <td ng-bind="row.logger"></td>
                         <td ng-bind="row.messageSplits.length == 4 ? row.messageSplits[0] : row.message" colspan="{{row.messageSplits.length == 4 ? 0 : 4}}"></td>
-                        <td ng-bind="row.messageSplits[1]" ng-if="row.messageSplits.length == 4"></td>
-                        <td ng-bind="row.messageSplits[2]" ng-if="row.messageSplits.length == 4"></td>
-                        <td ng-bind="row.messageSplits[3]" ng-if="row.messageSplits.length == 4"></td>
+                        <td ng-bind="row.messageSplits[1]" ng-if="row.messageSplits.length == 4" class="table-cell"></td>
+                        <td ng-bind="row.messageSplits[2]" ng-if="row.messageSplits.length == 4" class="table-cell"></td>
+                        <td ng-bind="row.messageSplits[3]" ng-if="row.messageSplits.length == 4" class="table-cell"></td>
                     </tr>
                 </tbody>
             </table>

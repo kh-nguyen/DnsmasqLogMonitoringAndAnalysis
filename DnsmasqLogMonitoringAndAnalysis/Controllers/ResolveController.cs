@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Text;
 
@@ -27,7 +26,7 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
             return Content(string.IsNullOrEmpty(hostname) ? ipAddress : hostname);
         }
 
-        public ActionResult Description(string domain, string ipAddress, string protocol = "https")
+        public ActionResult Description([FromQuery] DescriptionRequest descriptionRequest)
         {
             try {
                 ServicePointManager.SecurityProtocol
@@ -39,9 +38,8 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
 
                 HttpStatusCode statusCode = HttpStatusCode.OK;
                 HtmlDocument document = new HtmlDocument();
-                string url = null;
 
-                if (string.IsNullOrEmpty(ipAddress)) {
+                if (string.IsNullOrEmpty(descriptionRequest.ipAddress)) {
                     var htmlWeb = new HtmlWeb {
                         PostResponse = (request, response) => {
                             if (response != null) {
@@ -49,12 +47,12 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                             }
                         }
                     };
-                    url = string.Format("{0}://{1}", protocol, domain);
-                    document = htmlWeb.Load(url);
+                    descriptionRequest.url = string.Format("{0}://{1}", descriptionRequest.protocol, descriptionRequest.domain);
+                    document = htmlWeb.Load(descriptionRequest.url);
                 } else {
-                    url = string.Format("{0}://{1}", protocol, ipAddress);
-                    var request = (HttpWebRequest)WebRequest.Create(url);
-                    request.Host = domain;
+                    descriptionRequest.url = string.Format("{0}://{1}", descriptionRequest.protocol, descriptionRequest.ipAddress);
+                    var request = (HttpWebRequest)WebRequest.Create(descriptionRequest.url);
+                    request.Host = descriptionRequest.domain;
                     try {
                         using (var response = (HttpWebResponse)request.GetResponse()) {
                             statusCode = response.StatusCode;
@@ -73,26 +71,28 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                     }
                 }
 
-                if (statusCode == HttpStatusCode.NotFound && protocol != "http")
-                    return Description(domain, ipAddress, "http");
+                if (statusCode == HttpStatusCode.NotFound && descriptionRequest.protocol != "http") {
+                    descriptionRequest.protocol = "http";
+                    return Description(descriptionRequest);
+                }
 
                 if (statusCode != HttpStatusCode.OK)
                     return Content(null);
 
-                return Description(document, url, domain);
+                return Description(document, descriptionRequest);
             }
             catch (Exception) { }
 
             return Content(null);
         }
 
-        private ActionResult Description(HtmlDocument document, string url, string domain)
+        private ActionResult Description(HtmlDocument document, DescriptionRequest descriptionRequest)
         {
             string icon = null;
             string title = null;
             string description = null;
 
-            if (document == null || string.IsNullOrEmpty(url))
+            if (document == null || string.IsNullOrEmpty(descriptionRequest.url))
                 return Content(null);
 
             var metaTags = document.DocumentNode.SelectNodes("//meta");
@@ -116,12 +116,12 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                         icon = href.Value;
                         if (!icon.StartsWith("data:")) {
                             if (icon.StartsWith("//"))
-                                icon = url.Substring(0, url.IndexOf("//")) + icon;
+                                icon = descriptionRequest.protocol + ":" + icon;
                             else if (icon.StartsWith("/"))
-                                icon = url + icon;
+                                icon = descriptionRequest.GetBaseUrl() + icon;
                             else if (!icon.StartsWith("http"))
-                                icon = url + "/" + icon;
-                            icon = DownloadIcon(icon, domain);
+                                icon = descriptionRequest.GetBaseUrl() + "/" + icon;
+                            icon = DownloadIcon(new Uri(icon), descriptionRequest);
                         }
                         break;
                     }
@@ -136,11 +136,12 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
             // download the icon from the default location if the icon
             // cannot be retrieved from the document
             if (icon == null) {
-                icon = DownloadIcon(url + "/favicon.ico", domain);
+                icon = DownloadIcon(new Uri(string.Format("{0}://{1}/favicon.ico",
+                    descriptionRequest.protocol, descriptionRequest.domain)), descriptionRequest);
             }
 
             if (!string.IsNullOrEmpty(description)) {
-                LogMessageRelay.StoreDescription(domain, description);
+                LogMessageRelay.StoreDescription(descriptionRequest.domain, description);
             }
 
             string bodyText = document.DocumentNode.SelectSingleNode("//body").ToPlainText();
@@ -153,13 +154,16 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
             });
         }
 
-        private string DownloadIcon(string url, string domain)
+        private string DownloadIcon(Uri url, DescriptionRequest descriptionRequest)
         {
+            if (url.Host == descriptionRequest.domain)
+                url = new UriBuilder(url) { Host = descriptionRequest.ipAddress }.Uri;
+
             var request = (HttpWebRequest)WebRequest.Create(url);
 
             // note: if the url contains the hostname then it may leak DNS requests from the web server
             if (request.Host.Split(".").Length == 4) // check if it is an IP
-                request.Host = domain;
+                request.Host = descriptionRequest.domain;
 
             try {
                 using (var response = (HttpWebResponse)request.GetResponse()) {
@@ -172,7 +176,7 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                             responseStream.CopyTo(ms);
                             if (ms.Length > 1) {
                                 var bytes = ms.ToArray();
-                                LogMessageRelay.StoreIcon(domain, response.ContentType, bytes);
+                                LogMessageRelay.StoreIcon(descriptionRequest.domain, response.ContentType, bytes);
                                 var icon = string.Format("data:{0};base64,{1}",
                                     response.ContentType, Convert.ToBase64String(bytes));
                                 return icon;
@@ -188,11 +192,15 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
 
         public ActionResult Vendor(string mac)
         {
+            if (string.IsNullOrEmpty(mac))
+                return Content(null);
+
             try {
                 using (var client = new WebClient())
                 using (var stream = client.OpenRead(string.Format("https://api.macvendors.com/{0}", mac)))
                 using (var textReader = new StreamReader(stream, Encoding.UTF8, true)) {
                     var vendor = textReader.ReadToEnd();
+                    LogMessageRelay.StoreVendor(mac, vendor);
                     return Content(vendor);
                 }
             }
@@ -204,6 +212,18 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
         public ActionResult Data()
         {
             return new JsonResult(LogMessageRelay.OldData);
+        }
+    }
+
+    public class DescriptionRequest
+    {
+        public string domain { get; set; }
+        public string ipAddress { get; set; }
+        public string protocol { get; set; } = "https";
+        public string url { get; set; }
+
+        public string GetBaseUrl() {
+            return new Uri(url).GetLeftPart(UriPartial.Authority);
         }
     }
 }

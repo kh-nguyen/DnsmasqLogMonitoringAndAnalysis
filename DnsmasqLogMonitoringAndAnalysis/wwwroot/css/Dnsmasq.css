@@ -24,6 +24,7 @@
     max-width: 400px;
 }
 
+.dnsmasq .table-cell,
 .dnsmasq .categories {
     max-width: 200px;
 }

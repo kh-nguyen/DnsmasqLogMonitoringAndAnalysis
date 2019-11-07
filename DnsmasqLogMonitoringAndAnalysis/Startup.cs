@@ -70,6 +70,7 @@ namespace DnsmasqLogMonitoringAndAnalysis
 
         public static readonly string IconsDirPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "icons");
         public static readonly string DescriptionsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "descriptions.txt");
+        public static readonly string VendorsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "vendors.txt");
         public static readonly string LogDirPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
 
         public static string[] OldData {
@@ -120,6 +121,11 @@ namespace DnsmasqLogMonitoringAndAnalysis
         public static Dictionary<string, string> DescriptionsStorage = File.Exists(DescriptionsFilePath)
             ? JsonConvert.DeserializeObject<Dictionary<string, string>>(string.Format("{{{0}}}",
                 string.Join(",", File.ReadAllLines(DescriptionsFilePath).Where(x => !string.IsNullOrEmpty(x)))))
+            : new Dictionary<string, string>();
+
+        public static Dictionary<string, string> VendorsStorage = File.Exists(VendorsFilePath)
+            ? JsonConvert.DeserializeObject<Dictionary<string, string>>(string.Format("{{{0}}}",
+                string.Join(",", File.ReadAllLines(VendorsFilePath).Where(x => !string.IsNullOrEmpty(x)))))
             : new Dictionary<string, string>();
 
         public LogMessageRelay(IHubContext<DnsmasqQueriesHub> hubContext)
@@ -194,16 +200,17 @@ namespace DnsmasqLogMonitoringAndAnalysis
             StoreValue(domain, description, DescriptionsStorage, DescriptionsFilePath);
         }
 
+        public static void StoreVendor(string mac, string description)
+        {
+            StoreValue(mac, description, VendorsStorage, VendorsFilePath);
+        }
+
         private static void StoreValue(string key, string value, Dictionary<string, string> storage, string filePath)
         {
-            try
-            {
-                lock (storage)
-                {
-                    if (storage.ContainsKey(key))
-                    {
-                        if (storage[key].GetHashCode() != value.GetHashCode())
-                        {
+            try {
+                lock (storage) {
+                    if (storage.ContainsKey(key)) {
+                        if (storage[key].GetHashCode() != value.GetHashCode()) {
                             storage[key] = value;
 
                             File.WriteAllText(filePath, StripBrackets(JsonConvert.SerializeObject(storage)));
@@ -238,23 +245,20 @@ namespace DnsmasqLogMonitoringAndAnalysis
 
         private static string GetExtension(string contentType)
         {
-            try
-            {
+            try {
                 return MimeTypeMap.List.MimeTypeMap.GetExtension(contentType).First();
-            } catch (Exception)
-            {
+            }
+            catch (Exception) {
                 return ".ico";
             }
         }
 
         private static string GetMimeType(string extension)
         {
-            try
-            {
+            try {
                 return MimeTypeMap.List.MimeTypeMap.GetMimeType(extension).First();
             }
-            catch (Exception)
-            {
+            catch (Exception) {
                 return "application/octet-stream";
             }
         }
