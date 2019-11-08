@@ -111,7 +111,8 @@ namespace DnsmasqLogMonitoringAndAnalysis
                     var domain = Path.GetFileNameWithoutExtension(file.Name);
                     var icon = string.Format("data:{0};base64,{1}", contentType,
                         Convert.ToBase64String(File.ReadAllBytes(file.FullName)));
-                    icons.Add(domain, icon);
+                    if (!icons.ContainsKey(domain))
+                        icons.Add(domain, icon);
                 }
 
                 return icons;
@@ -186,11 +187,20 @@ namespace DnsmasqLogMonitoringAndAnalysis
         public static void StoreIcon(string domain, string contentType, byte[] data)
         {
             Directory.CreateDirectory(IconsDirPath);
-            var fileName = string.Format("{0}{1}", domain, GetExtension(contentType));
-            fileName = Path.Combine(IconsDirPath, fileName);
+            var extension = GetExtension(contentType);
+            var fileName = Path.Combine(IconsDirPath, string.Format("{0}{1}", domain, extension));
             if (File.Exists(fileName)) {
                 if (File.ReadAllBytes(fileName).SequenceEqual(data))
                     return;
+            } else {
+                var sameNames = Directory.EnumerateFiles(IconsDirPath, $"{domain}.*")
+                    .Where(x => Path.GetFileNameWithoutExtension(x) == domain);
+
+                // remove domains with different file extensions if any
+                if (sameNames.Any()) {
+                    foreach (var file in sameNames)
+                        File.Delete(file);
+                }
             }
             File.WriteAllBytes(fileName, data);
         }

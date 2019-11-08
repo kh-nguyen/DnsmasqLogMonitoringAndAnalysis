@@ -528,16 +528,8 @@
                 ++domain.totalRequests;
                 ++topDomain.totalRequests;
                 {
-                    var lastRequestTime = requestor.lastRequestTime;
-                    var currentRequestTime = loggedEvent.time;
-
-                    // remove seconds and milliseconds info to keep only minutes
-                    lastRequestTime.seconds(0);
-                    lastRequestTime.milliseconds(0);
-                    currentRequestTime.seconds(0);
-                    currentRequestTime.milliseconds(0);
-
-                    var IsNewRecord = lastRequestTime < currentRequestTime;
+                    // it is a new request only if the time difference is 60 seconds
+                    var IsNewRecord = loggedEvent.time - requestor.lastRequestTime >= 60000;
 
                     if (IsNewRecord === true) {
                         if (requestor.records.length >= REQUESTOR_MAX_RECORDS) {
@@ -732,7 +724,8 @@
 
         dnsmasq.dataOptions.chart.initialize();
 
-        var query = null;
+        var queries = [];
+        var cquery = null;
 
         $(document).on("dnsmasq", function (event, line, imported) {
             if (dnsmasq.dataOptions.pause) {
@@ -847,50 +840,79 @@
                         }
                     }
                 }
+
+                return;
             }
 
             if (cmd.startsWith(queryKey)) {
-                if (query !== null) {
-                    // not get a reply ?
-                    done();
-                }
-
-                query = {};
+                var query = {};
                 query.type = "query";
                 query.time = timestamp;
                 query.domain = split[baseIndex + 1];
                 query.requestor = split[baseIndex + 3];
                 query.imported = imported;
-            } else if (query !== null) {
-                if (query.domain === split[baseIndex + 1]) {
-                    if (cmd === "forwarded") {
-                        query.resolver = split[baseIndex + 3];
+                queries.push(query);
+            } else {
+                var domain = split[baseIndex + 1];
+                let verb = split[baseIndex + 2];
+                var ipaddress = split[baseIndex + 3];
+
+                if (cquery !== null && verb === "is") {
+                    cquery.ipaddress = ipaddress;
+                    cquery.aliases.push(domain);
+
+                    if (isIP(cquery.ipaddress)) {
+                        dnsmasq.ipAddresses[cquery.domain] = cquery.ipaddress;
                     }
-                    else if (split[baseIndex + 2] === "is") {
-                        if (cmd !== "reply") {
-                            query.resolver = split[baseIndex];
+
+                    // if still cname then wait again
+                    if (ipaddress === "<CNAME>") {
+                        return;
+                    }
+
+                    dnsmasq.log(cquery);
+
+                    cquery = null; // reset cname query when done
+                } else {
+                    var nqueries = [];
+
+                    $.each(queries, function (index, query) {
+                        if (query.domain === domain) {
+                            if (cmd === "forwarded") {
+                                query.resolver = ipaddress;
+                            }
+                            else if (verb === "is") {
+                                if (cmd !== "reply") {
+                                    query.resolver = cmd;
+                                }
+
+                                query.ipaddress = ipaddress;
+
+                                if (isIP(ipaddress)) {
+                                    dnsmasq.ipAddresses[query.domain] = ipaddress;
+                                } else if (ipaddress === "<CNAME>") {
+                                    query.aliases = [];
+                                    cquery = query;
+                                    return;
+                                }
+
+                                dnsmasq.log(query);
+                                return;
+                            }
+                        } else {
+                            // if it is on the queue too long (5 seconds), remove it
+                            if (new Date() - query.time >= 5000) {
+                                dnsmasq.log(query);
+                                return;
+                            }
                         }
 
-                        query.ipaddress = split[baseIndex + 3];
+                        // re-query to wait for the next data line
+                        nqueries.push(query);
+                    });
 
-                        if (query.ipaddress === "<CNAME>") {
-                            query.aliases = [];
-                        }
-                    }
-                } else if (split[baseIndex + 2] === "is" && $.isArray(query.aliases)) {
-                    query.ipaddress = split[baseIndex + 3];
-                    query.aliases.push(split[baseIndex + 1]);
+                    queries = nqueries;
                 }
-
-                if (isIP(query.ipaddress)) {
-                    dnsmasq.ipAddresses[query.domain] = query.ipaddress;
-                    done();
-                }
-            }
-
-            function done() {
-                dnsmasq.log(query);
-                query = null;
             }
 
             function getDateTime(split) {
@@ -908,9 +930,7 @@
                 date.push(day);
                 date.push(time);
 
-                var timestamp = moment(date.join(' '), 'YYYY MMM D HH:mm:ss');
-
-                return timestamp;
+                return moment(date.join(' '), 'YYYY MMM D HH:mm:ss');
             }
         });
 
