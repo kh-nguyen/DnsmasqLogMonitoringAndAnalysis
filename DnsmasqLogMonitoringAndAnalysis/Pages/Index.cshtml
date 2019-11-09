@@ -20,7 +20,7 @@
             }
         },
         OldData = Request.Query // if the request is to include the log file, then supply it
-        .Where(x => x.Key == "log" && x.Value == "true").Any() ? LogMessageRelay.OldData : null
+        .Where(x => x.Key == "log" && x.Value == "true").Any() ? LogMessageRelay.OldData() : null
     };
 }
 

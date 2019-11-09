@@ -209,9 +209,9 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
             return Content(null);
         }
 
-        public ActionResult Data()
+        public ActionResult Data(DateTime? fromDate)
         {
-            return new JsonResult(LogMessageRelay.OldData);
+            return new JsonResult(LogMessageRelay.OldData(fromDate));
         }
     }
 

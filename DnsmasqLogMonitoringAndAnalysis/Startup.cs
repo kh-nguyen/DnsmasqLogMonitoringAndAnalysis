@@ -73,28 +73,29 @@ namespace DnsmasqLogMonitoringAndAnalysis
         public static readonly string VendorsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "vendors.txt");
         public static readonly string LogDirPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
 
-        public static string[] OldData {
-            get {
-                var path = LogDirPath;
-                var data = new List<string>();
+        public static string[] OldData(DateTime? fromDate = null)
+        {
+            var path = LogDirPath;
+            var data = new List<string>();
 
-                DirectoryInfo info = new DirectoryInfo(path);
-                FileInfo[] files = info.GetFiles().OrderBy(p => p.CreationTime).ToArray();
+            DirectoryInfo info = new DirectoryInfo(path);
+            FileInfo[] files = info.GetFiles()
+                .Where(x => x.CreationTime >= (fromDate ?? DateTime.MinValue))
+                .OrderBy(p => p.CreationTime).ToArray();
 
-                foreach (var file in files) {
-                    using (FileStream fileStream = new FileStream(
-                        file.FullName,
-                        FileMode.Open,
-                        FileAccess.Read,
-                        FileShare.ReadWrite)) {
-                        using (StreamReader streamReader = new StreamReader(fileStream)) {
-                            data.AddRange(streamReader.ReadToEnd().Split(Environment.NewLine));
-                        }
+            foreach (var file in files) {
+                using (FileStream fileStream = new FileStream(
+                    file.FullName,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.ReadWrite)) {
+                    using (StreamReader streamReader = new StreamReader(fileStream)) {
+                        data.AddRange(streamReader.ReadToEnd().Split(Environment.NewLine));
                     }
                 }
-
-                return data.ToArray();
             }
+
+            return data.ToArray();
         }
 
         public static Dictionary<string, string> IconsStorage {

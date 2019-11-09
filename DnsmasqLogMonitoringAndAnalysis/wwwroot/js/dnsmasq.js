@@ -496,14 +496,12 @@
                     }
                 }
                 if (categoryObj !== false) {
-                    var catTopDomainName = getTopDomain(loggedEvent.domain);
-
-                    var catTopDomain = categoryObj.records.find(function (x) { return x.key === catTopDomainName; });
+                    var catTopDomain = categoryObj.records.find(function (x) { return x.key === topDomainKey; });
                     if (typeof catTopDomain === 'undefined') {
                         catTopDomain = {
                             records: [],
                             requestors: [],
-                            key: catTopDomainName,
+                            key: topDomainKey,
                             lastRequestTime: loggedEvent.time,
                             lastRequestor: requestor,
                             expand: { hidden: true, sort: { orderBy: 'time', orderReverse: true }, limit: 20 }
@@ -521,6 +519,8 @@
                     if (catTopDomain.requestors.indexOf(client) === -1) {
                         catTopDomain.requestors.push(client);
                     }
+
+                    toBeFilledWithDescription.push(catTopDomain);
 
                     domain.category = categoryObj;
                 }
@@ -644,14 +644,23 @@
                 $this.applyData($scope.OldData.split('\n'));
                 $scope.loading_data = false;
             },
-            loadData: function () {
+            loadData: function (fromDate) {
                 var $this = this;
 
                 $scope.loading_data = true;
 
-                $.get($this.settings.OldDataUrl).done($this.applyData).always(function () {
+                $.get($this.settings.OldDataUrl, { fromDate: fromDate }).done($this.applyData).always(function () {
                     $scope.loading_data = false;
                 });
+            },
+            loadTodayData: function () {
+                this.loadData(moment().startOf('day').format('YYYY-MM-DD'));
+            },
+            loadThreeDayData: function () {
+                this.loadData(moment().startOf('day').subtract(3, 'days').format('YYYY-MM-DD'));
+            },
+            loadOneWeekData: function () {
+                this.loadData(moment().startOf('day').subtract(7, 'days').format('YYYY-MM-DD'));
             },
             applyData: function (data) {
                 if (typeof data === 'undefined' || data.length <= 0) {

@@ -50,3 +50,7 @@
 .dnsmasq .icon {
     width: 20px;
 }
+
+.dnsmasq .padding-zero {
+    padding: 0 !important;
+}

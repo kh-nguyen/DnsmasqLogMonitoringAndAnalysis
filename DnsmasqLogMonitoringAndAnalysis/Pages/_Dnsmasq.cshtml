@@ -1,15 +1,24 @@
 ﻿<div class="content-wrapper container-fluid dnsmasq">
-    <h3>
+    <div class="h3">
         <span ng-if="dnsmasq.title"><span ng-bind="dnsmasq.title"></span>: <span ng-bind="dnsmasq.settings.NetworkPort" title="The listening network port"></span></span>
         <mark ng-if="dnsmasq.dataOptions.pause"> pausing...</mark>
-        <span class="pull-right">
+        <div class="pull-right">
             <a class="btn btn-default btn-sm hidden" ng-click="dnsmasq.saveData()" title="Save current data to disk"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span></a>
-            <span>
-                <a ng-if="!loading_data && OldDataLoadedCount == OldDataCount" class="btn btn-default btn-sm" ng-click="dnsmasq.loadData()" title="Load saved data from server">
+            <div class="btn-group btn-sm padding-zero" ng-if="!loading_data && OldDataLoadedCount == OldDataCount">
+                <button type="button" class="btn btn-default" ng-click="dnsmasq.loadData()" title="Load all saved data from server">
                     <span class="glyphicon glyphicon-open" aria-hidden="true"></span>
-                </a>
-                <span ng-if="loading_data" class="glyphicon glyphicon-hdd" aria-hidden="true" title="Loading data..."></span>
-            </span>
+                </button>
+                <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <span class="caret"></span>
+                    <span class="sr-only">Toggle Dropdown</span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a href="#" ng-click="dnsmasq.loadTodayData()">Today</a></li>
+                    <li><a href="#" ng-click="dnsmasq.loadThreeDayData()">3 days</a></li>
+                    <li><a href="#" ng-click="dnsmasq.loadOneWeekData()">1 Week</a></li>
+                </ul>
+            </div>
+            <span ng-if="loading_data" class="glyphicon glyphicon-hdd" aria-hidden="true" title="Loading data..."></span>
             <span ng-show="!loading_data && OldDataLoadedCount == OldDataCount" class="btn btn-primary fileinput-button" title="Click to import dnsmasq log data from a file">
                 <i class="glyphicon glyphicon-upload"></i>
                 <input type="file"
@@ -22,8 +31,8 @@
             <a class="btn btn-default btn-sm" ng-click="dnsmasq.dataOptions.pause = !dnsmasq.dataOptions.pause" title="Pause the program so incoming data will be skipped"><span class="glyphicon" ng-class="dnsmasq.dataOptions.pause ? 'glyphicon-play' : 'glyphicon-pause'" aria-hidden="true"></span></a>
             <a class="btn btn-default btn-sm" ng-click="dnsmasq.dataOptions.settings = !dnsmasq.dataOptions.settings" title="Show the settings"><span class="glyphicon glyphicon-cog" aria-hidden="true"></span></a>
             <small>Uptime: <span title="{{dnsmasq.startTime}}" am-time-ago="dnsmasq.startTime"></span></small>
-        </span>
-    </h3>
+        </div>
+    </div>
 
     <div class="row" ng-if="dnsmasq.dataOptions.settings">
         <div class="col-xs-12">
@@ -162,7 +171,7 @@
                                 <td class="description" ng-if="!dnsmasq.settings.disable_website_description">
                                     <div ng-if="domain.description.description || domain.description.title || domain.description.icon" title="{{domain.description.bodyText}}">
                                         <img ng-if="domain.description.icon" class="icon" ng-src="{{domain.description.icon}}" alt="" />
-                                        <span ng-if="domain.description.subdomain"><span ng-bind="domain.description.subdomain"></span>:</span>
+                                        <span class="text-primary" ng-if="domain.description.subdomain"><span ng-bind="domain.description.subdomain"></span>:</span>
                                         <small ng-bind-html="domain.description.description ? domain.description.description : domain.description.title | html"></small>
                                     </div>
                                 </td>
