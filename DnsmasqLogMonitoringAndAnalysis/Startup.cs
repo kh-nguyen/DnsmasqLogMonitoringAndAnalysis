@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
@@ -31,7 +32,9 @@ namespace DnsmasqLogMonitoringAndAnalysis
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
+            services.AddRazorPages();
+
+            services.AddControllers().AddNewtonsoftJson();
 
             services.AddSignalR();
 
@@ -39,7 +42,7 @@ namespace DnsmasqLogMonitoringAndAnalysis
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory loggerFactory)
         {
             if (env.IsDevelopment()) {
                 app.UseDeveloperExceptionPage();
@@ -47,11 +50,16 @@ namespace DnsmasqLogMonitoringAndAnalysis
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
-            app.UseSignalR(routes => {
-                routes.MapHub<DnsmasqQueriesHub>("/dnsmasq");
-            });
 
-            app.UseMvc();
+            app.UseRouting();
+
+            app.UseAuthorization();
+
+            app.UseEndpoints(endpoints => {
+                endpoints.MapHub<DnsmasqQueriesHub>("/dnsmasq");
+                endpoints.MapDefaultControllerRoute();
+                endpoints.MapRazorPages();
+            });
 
             log4net.GlobalContext.Properties["LogDirPath"] = LogMessageRelay.LogDirPath;
             loggerFactory.AddLog4Net();
@@ -80,18 +88,18 @@ namespace DnsmasqLogMonitoringAndAnalysis
 
             DirectoryInfo info = new DirectoryInfo(path);
             FileInfo[] files = info.GetFiles()
-                .Where(x => x.CreationTime >= (fromDate ?? DateTime.MinValue))
-                .OrderBy(p => p.CreationTime).ToArray();
+                .Where(x => x.LastWriteTime >= (fromDate ?? DateTime.MinValue))
+                .OrderBy(p => p.LastWriteTime).ToArray();
 
             foreach (var file in files) {
-                using (FileStream fileStream = new FileStream(
+                using FileStream fileStream = new FileStream(
                     file.FullName,
                     FileMode.Open,
                     FileAccess.Read,
-                    FileShare.ReadWrite)) {
-                    using (StreamReader streamReader = new StreamReader(fileStream)) {
-                        data.AddRange(streamReader.ReadToEnd().Split(Environment.NewLine));
-                    }
+                    FileShare.ReadWrite);
+                using StreamReader streamReader = new StreamReader(fileStream);
+                while (!streamReader.EndOfStream) {
+                    data.Add(streamReader.ReadLine());
                 }
             }
 

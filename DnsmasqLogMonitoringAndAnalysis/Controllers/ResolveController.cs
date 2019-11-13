@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Text;
 
@@ -211,7 +212,7 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
 
         public ActionResult Data(DateTime? fromDate)
         {
-            return new JsonResult(LogMessageRelay.OldData(fromDate));
+            return Ok(LogMessageRelay.OldData(fromDate));
         }
     }
 

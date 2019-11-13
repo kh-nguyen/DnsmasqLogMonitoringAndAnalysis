@@ -30,7 +30,9 @@
 
         var abstractDescription = {
             hasDescription: function () {
-                return this.description || this.title || this.icon;
+                return (this.description && this.description.length > 1) ||
+                    (this.title && this.title.length > 1) ||
+                    (this.icon && this.icon.length > 1);
             }
         };
 
@@ -336,7 +338,6 @@
                 var dnsmasq = $scope.dnsmasq;
                 var REQUESTOR_MAX_RECORDS = 100;
                 var toBeFilledWithDescription = [];
-                var isNewDomain = false;
 
                 if ($.inArray($.trim(loggedEvent.requestor), dnsmasq.ignored.data) >= 0) {
                     return;
@@ -463,7 +464,6 @@
                 }
                 domain = topDomain.records.find(function (x) { return x.key === loggedEvent.domain; });
                 if (typeof domain === 'undefined') {
-                    isNewDomain = true;
                     domain = {
                         key: loggedEvent.domain,
                         subdomain: subDomainKey,
@@ -548,10 +548,7 @@
                 toBeFilledWithDescription.push(domain);
                 toBeFilledWithDescription.push(topDomain);
 
-                if (isNewDomain || typeof domain.description === 'undefined') {
-                    domain.description = null;
-                    getDescription();
-                }
+                getDescription();
 
                 function getDescription() {
                     var description = dnsmasq.descriptions[loggedEvent.domain];
@@ -608,9 +605,7 @@
                     data.shift();
                 }
 
-                $scope.$apply(function () {
-                    data.push(row);
-                });
+                data.push(row);
 
                 ++options.count;
 
@@ -649,18 +644,22 @@
 
                 $scope.loading_data = true;
 
-                $.get($this.settings.OldDataUrl, { fromDate: fromDate }).done($this.applyData).always(function () {
+                $.get($this.settings.OldDataUrl, { fromDate: fromDate.format('YYYY-MM-DDTHH:mm:ssZ') })
+                .fail(function (msg) {
+                    console.log('Load data failed with message: ' + JSON.stringify(msg));
+                })
+                .done($this.applyData).always(function () {
                     $scope.loading_data = false;
                 });
             },
             loadTodayData: function () {
-                this.loadData(moment().startOf('day').format('YYYY-MM-DD'));
+                this.loadData(moment().startOf('day'));
             },
             loadThreeDayData: function () {
-                this.loadData(moment().startOf('day').subtract(3, 'days').format('YYYY-MM-DD'));
+                this.loadData(moment().startOf('day').subtract(3, 'days'));
             },
             loadOneWeekData: function () {
-                this.loadData(moment().startOf('day').subtract(7, 'days').format('YYYY-MM-DD'));
+                this.loadData(moment().startOf('day').subtract(7, 'days'));
             },
             applyData: function (data) {
                 if (typeof data === 'undefined' || data.length <= 0) {
@@ -863,10 +862,10 @@
                 queries.push(query);
             } else {
                 var domain = split[baseIndex + 1];
-                let verb = split[baseIndex + 2];
+                var copula = split[baseIndex + 2];
                 var ipaddress = split[baseIndex + 3];
 
-                if (cquery !== null && verb === "is") {
+                if (cquery !== null && copula === "is") {
                     cquery.ipaddress = ipaddress;
                     cquery.aliases.push(domain);
 
@@ -890,7 +889,7 @@
                             if (cmd === "forwarded") {
                                 query.resolver = ipaddress;
                             }
-                            else if (verb === "is") {
+                            else if (copula === "is") {
                                 if (cmd !== "reply") {
                                     query.resolver = cmd;
                                 }
@@ -923,6 +922,9 @@
                     queries = nqueries;
                 }
             }
+
+            // refresh the view model
+            $scope.$apply();
 
             function getDateTime(split) {
                 var month = split[0];
@@ -1054,9 +1056,7 @@
 
         function fillDescription(queue, data) {
             $.each(queue, function (index, obj) {
-                if (typeof obj.description === 'undefined') {
-                    obj.description = data;
-                } else if (data.hasDescription()) {
+                if (data.hasDescription()) {
                     obj.description = data;
                 }
 
