@@ -544,9 +544,10 @@
                     domain.lastRequestor = requestor;
                     topDomain.lastRequestTime = loggedEvent.time;
                     topDomain.lastRequestor = requestor;
+                    topDomain.description = null;
+                    toBeFilledWithDescription.push(topDomain);
                 }
                 toBeFilledWithDescription.push(domain);
-                toBeFilledWithDescription.push(topDomain);
 
                 getDescription();
 
@@ -562,7 +563,7 @@
                             dnsmasq.descriptions.requests.push(loggedEvent.domain);
                         }
                     } else {
-                        if (typeof description === 'string') {
+                        if (typeof description === 'string' && description.length > 0) {
                             description = $.extend({
                                 domain: loggedEvent.domain,
                                 topdomain: topDomainKey,
