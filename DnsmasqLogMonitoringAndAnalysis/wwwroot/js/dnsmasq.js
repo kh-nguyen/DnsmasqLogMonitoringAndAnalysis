@@ -801,7 +801,7 @@
             }
             //-------------------------------------
 
-            var queryKey = "query[A]";
+            var queryKey = "query[";
             var cmd = split[baseIndex];
 
             // DHCP

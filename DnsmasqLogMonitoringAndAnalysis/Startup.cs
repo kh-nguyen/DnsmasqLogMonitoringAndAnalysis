@@ -106,37 +106,17 @@ namespace DnsmasqLogMonitoringAndAnalysis
             return data.ToArray();
         }
 
-        public static Dictionary<string, string> IconsStorage {
-            get {
-                var icons = new Dictionary<string, string>();
+        public static readonly Dictionary<string, string> IconsStorage = GetIcons();
 
-                if (!Directory.Exists(IconsDirPath))
-                    return icons;
+        public static Dictionary<string, string> DescriptionsStorage
+            = GetStorage<Dictionary<string, string>>(DescriptionsFilePath)
+            // if there is no icon associated, then a new description request will be
+            // made each time there is a new DNS query for the particular domain
+            .Where(x => IconsStorage.ContainsKey(x.Key))
+            .ToDictionary(x => x.Key, y => y.Value);
 
-                DirectoryInfo info = new DirectoryInfo(IconsDirPath);
-
-                foreach (var file in info.GetFiles()) {
-                    var contentType = GetMimeType(file.Extension);
-                    var domain = Path.GetFileNameWithoutExtension(file.Name);
-                    var icon = string.Format("data:{0};base64,{1}", contentType,
-                        Convert.ToBase64String(File.ReadAllBytes(file.FullName)));
-                    if (!icons.ContainsKey(domain))
-                        icons.Add(domain, icon);
-                }
-
-                return icons;
-            }
-        }
-
-        public static Dictionary<string, string> DescriptionsStorage = File.Exists(DescriptionsFilePath)
-            ? JsonConvert.DeserializeObject<Dictionary<string, string>>(string.Format("{{{0}}}",
-                string.Join(",", File.ReadAllLines(DescriptionsFilePath).Where(x => !string.IsNullOrEmpty(x)))))
-            : new Dictionary<string, string>();
-
-        public static Dictionary<string, string> VendorsStorage = File.Exists(VendorsFilePath)
-            ? JsonConvert.DeserializeObject<Dictionary<string, string>>(string.Format("{{{0}}}",
-                string.Join(",", File.ReadAllLines(VendorsFilePath).Where(x => !string.IsNullOrEmpty(x)))))
-            : new Dictionary<string, string>();
+        public static Dictionary<string, string> VendorsStorage
+            = GetStorage<Dictionary<string, string>>(VendorsFilePath);
 
         public LogMessageRelay(IHubContext<DnsmasqQueriesHub> hubContext)
         {
@@ -280,6 +260,39 @@ namespace DnsmasqLogMonitoringAndAnalysis
             catch (Exception) {
                 return "application/octet-stream";
             }
+        }
+
+        private static Dictionary<string, string> GetIcons()
+        {
+            var icons = new Dictionary<string, string>();
+
+            if (!Directory.Exists(IconsDirPath))
+                return icons;
+
+            var info = new DirectoryInfo(IconsDirPath);
+
+            // only load files that are not too old
+            var files = info.GetFiles().Where(x => x.CreationTime >= DateTime.Now.AddDays(-30));
+
+            foreach (var file in files)
+            {
+                var contentType = GetMimeType(file.Extension);
+                var domain = Path.GetFileNameWithoutExtension(file.Name);
+                var icon = string.Format("data:{0};base64,{1}", contentType,
+                    Convert.ToBase64String(File.ReadAllBytes(file.FullName)));
+                if (!icons.ContainsKey(domain))
+                    icons.Add(domain, icon);
+            }
+
+            return icons;
+        }
+
+        private static T GetStorage<T>(string filePath)
+        {
+            return File.Exists(filePath)
+                ? JsonConvert.DeserializeObject<T>(string.Format("{{{0}}}",
+                    string.Join(",", File.ReadAllLines(filePath).Where(x => !string.IsNullOrEmpty(x)))))
+                : (T)Activator.CreateInstance(typeof(T));
         }
     }
 }
