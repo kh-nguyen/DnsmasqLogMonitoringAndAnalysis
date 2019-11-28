@@ -196,6 +196,8 @@ namespace DnsmasqLogMonitoringAndAnalysis
 
         public static void StoreDescription(string domain, string description)
         {
+            // remove the {{ and }} to avoid in conflict with AngularJS
+            description = description.Replace("{{", "[[").Replace("}}", "]]");
             StoreValue(domain, description, DescriptionsStorage, DescriptionsFilePath);
         }
 

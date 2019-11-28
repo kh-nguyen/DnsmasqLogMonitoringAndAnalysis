@@ -167,7 +167,7 @@
                                 </td>
                                 <td><span ng-bind="domain.requestors.length | number"></span></td>
                                 <td><span ng-bind="domain.totalRequests | number" class="update-item value-{{domain.totalRequests}}"></span></td>
-                                <td><span ng-bind="domain.lastRequestor.hostname ? domain.lastRequestor.hostname : domain.lastRequestor.key" title="{{domain.lastRequestor.key}}"></span>: <span title="{{domain.lastRequestTime}}" am-time-ago="domain.lastRequestTime"></span></td>
+                                <td><span ng-bind="domain.lastRequestor.client.hostname ? domain.lastRequestor.client.hostname : domain.lastRequestor.client.key" title="{{domain.lastRequestor.client.key}}"></span>: <span title="{{domain.lastRequestTime}}" am-time-ago="domain.lastRequestTime"></span></td>
                                 <td class="description" ng-if="!dnsmasq.settings.disable_website_description">
                                     <div ng-if="domain.description.description || domain.description.title || domain.description.icon" title="{{domain.description.bodyText}}">
                                         <img ng-if="domain.description.icon" class="icon" ng-src="{{domain.description.icon}}" alt="" />
@@ -273,7 +273,7 @@
                                                 </td>
                                                 <td><span ng-bind="topdomain.requestors.length | number" class="update-item value-{{topdomain.requestors.length}}"></span></td>
                                                 <td><span ng-bind="topdomain.records.length | number" class="update-item value-{{topdomain.records.length}}"></span></td>
-                                                <td><span ng-bind="topdomain.lastRequestor.hostname ? topdomain.lastRequestor.hostname : topdomain.lastRequestor.key"></span>: <span title="{{topdomain.lastRequestTime}}" am-time-ago="topdomain.lastRequestTime"></span></td>
+                                                <td><span ng-bind="topdomain.lastRequestor.client.hostname ? topdomain.lastRequestor.client.hostname : topdomain.lastRequestor.client.key"></span>: <span title="{{topdomain.lastRequestTime}}" am-time-ago="topdomain.lastRequestTime"></span></td>
                                             </tr>
                                             <tr ng-repeat-end ng-if="!topdomain.expand.hidden">
                                                 <td colspan="4"><div domains-template domains="topdomain" dnsmasq="dnsmasq"></div></td>
@@ -503,7 +503,7 @@
                 <td ng-bind="domain.category.name"></td>
                 <td><span ng-bind="domain.totalRequestors | number" class="update-item value-{{domain.totalRequestors}}"></span></td>
                 <td><span ng-bind="domain.totalRequests | number" class="update-item value-{{domain.totalRequests}}"></span></td>
-                <td><span ng-bind="domain.lastRequestor.hostname ? domain.lastRequestor.hostname : domain.lastRequestor.key"></span>: <span title="{{domain.lastRequestTime}}" am-time-ago="domain.lastRequestTime"></span></td>
+                <td><span ng-bind="domain.lastRequestor.client.hostname ? domain.lastRequestor.client.hostname : domain.lastRequestor.client.key"></span>: <span title="{{domain.lastRequestTime}}" am-time-ago="domain.lastRequestTime"></span></td>
                 <td class="description" ng-if="!dnsmasq.settings.disable_website_description" title="{{domain.description.bodyText}}">
                     <div ng-if="domain.description.description || domain.description.title || domain.description.icon">
                         <img ng-if="domain.description.icon" class="icon" ng-src="{{domain.description.icon}}" alt="" />
@@ -525,7 +525,7 @@
                             <tr ng-repeat-start="requestor in domain.records | orderBy:domain.expand.sort.orderBy:domain.expand.sort.orderReverse">
                                 <td>
                                     <span toggle-hidden options="requestor.expand"></span>
-                                    <span ng-bind="requestor.hostname ? requestor.hostname : requestor.key" title="IP Address: {{requestor.key}}"></span>
+                                    <span ng-bind="requestor.client.hostname ? requestor.client.hostname : requestor.client.key" title="IP Address: {{requestor.client.key}}"></span>
                                 </td>
                                 <td><span ng-bind="requestor.totalRequests | number" class="update-item value-{{requestor.totalRequests}}"></span></td>
                                 <td title="{{requestor.lastRequestTime}}" am-time-ago="requestor.lastRequestTime"></td>

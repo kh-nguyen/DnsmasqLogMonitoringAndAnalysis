@@ -299,13 +299,7 @@
             },
             queries: [],
             queriesOptions: {
-                expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 50 },
-                resolveNames: function () {
-                    $.each(dnsmasq.queries, function (index, client) {
-                        delete dnsmasq.hostnames[client.key];
-                        $scope.networkResolve(client.key, client);
-                    });
-                }
+                expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 50 }
             },
             resolvers: [],
             resolversOptions: { expand: { hidden: true, sort: { orderBy: 'key', orderReverse: false } }, sum: { totalRequests: 0 } },
@@ -476,10 +470,10 @@
                     };
                     topDomain.records.push(domain);
                 }
-                var requestor = domain.records.find(function (x) { return x.key === loggedEvent.requestor; });
+                var requestor = domain.records.find(function (x) { return x.client.key === loggedEvent.requestor; });
                 if (typeof requestor === 'undefined') {
                     requestor = {
-                        key: loggedEvent.requestor,
+                        client: client,
                         lastRequestTime: loggedEvent.time,
                         totalRequests: 0,
                         records: [loggedEvent],
@@ -487,8 +481,6 @@
                     };
                     domain.records.push(requestor);
                     ++domain.totalRequestors;
-
-                    $scope.networkResolve(loggedEvent.requestor, requestor);
 
                     var topDomainRequestors = topDomain.requestors.find(function (x) { return x === loggedEvent.requestor; });
                     if (typeof topDomainRequestors === 'undefined') {
@@ -818,7 +810,11 @@
                         if (typeof client.hostnames === 'undefined') {
                             client.hostnames = [];
                         }
-                        hostnameObj = client.hostnames.find(function (x) { return x.name === hostname || x.mac === mac; });
+                        hostnameObj = client.hostnames.find(function (x) {
+                            var nameLowerCase = typeof x.name === 'string' ? x.name.toLowerCase() : x.name;
+                            var hostnameLowerCase = typeof hostname === 'string' ? hostname.toLowerCase() : hostname;
+                            return nameLowerCase === hostnameLowerCase || x.mac === mac;
+                        });
                         if (typeof hostnameObj === 'undefined') {
                             hostnameObj = { mac: mac, name: hostname };
                             client.hostnames.push(hostnameObj);
@@ -829,6 +825,9 @@
 
                     if (typeof hostname !== 'undefined' && hostname.length) {
                         dnsmasq.hostnames[ip] = hostname;
+                        if (typeof client !== 'undefined') {
+                            client.hostname = hostname;
+                        }
                     }
 
                     if (typeof mac !== 'undefined' && mac.length) {
@@ -945,9 +944,6 @@
                 return moment(date.join(' '), 'YYYY MMM D HH:mm:ss');
             }
         });
-
-        // query for the updated host name of the clients every 15 minutes
-        setInterval(function () { dnsmasq.queriesOptions.resolveNames(); }, 15 * 60 * 1000);
 
         // query for the website description which processes 10 request at a time
         setInterval(function () {
