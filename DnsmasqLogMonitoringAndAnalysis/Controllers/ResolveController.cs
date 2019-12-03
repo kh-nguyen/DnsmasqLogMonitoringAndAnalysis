@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace DnsmasqLogMonitoringAndAnalysis.Controllers
 {
@@ -12,22 +13,32 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
     [ApiController]
     public class ResolveController : ControllerBase
     {
-        [HttpPost("{ipAddress}")]
-        public ActionResult Hostname(string ipAddress)
+        [HttpGet("{ipAddress}")]
+        public async Task<ActionResult> Hostname(string ipAddress)
         {
             string hostname = null;
 
             try
             {
                 IPAddress hostIPAddress = IPAddress.Parse(ipAddress);
-                hostname = Dns.GetHostEntry(hostIPAddress).HostName;
+                hostname = (await Dns.GetHostEntryAsync(hostIPAddress)).HostName;
+
+                if (!string.IsNullOrEmpty(hostname) && hostname != ipAddress) {
+                    LogMessageRelay.StoreHostname(ipAddress, hostname);
+                }
             }
             catch (Exception) { }
 
             return Content(string.IsNullOrEmpty(hostname) ? ipAddress : hostname);
         }
 
-        public ActionResult Description([FromQuery] DescriptionRequest descriptionRequest)
+        [HttpPost("{ipAddress}")]
+        public void Hostname(string ipAddress, [FromForm] string hostname)
+        {
+            LogMessageRelay.StoreHostname(ipAddress, hostname);
+        }
+
+        public async Task<ActionResult> Description([FromQuery] DescriptionRequest descriptionRequest)
         {
             try {
                 ServicePointManager.SecurityProtocol
@@ -55,7 +66,7 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                     var request = (HttpWebRequest)WebRequest.Create(descriptionRequest.url);
                     request.Host = descriptionRequest.domain;
                     try {
-                        using (var response = (HttpWebResponse)request.GetResponse()) {
+                        using (var response = (HttpWebResponse) await request.GetResponseAsync()) {
                             statusCode = response.StatusCode;
 
                             if (statusCode == HttpStatusCode.OK) {
@@ -74,20 +85,20 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
 
                 if (statusCode == HttpStatusCode.NotFound && descriptionRequest.protocol != "http") {
                     descriptionRequest.protocol = "http";
-                    return Description(descriptionRequest);
+                    return await Description(descriptionRequest);
                 }
 
                 if (statusCode != HttpStatusCode.OK)
                     return Content(null);
 
-                return Description(document, descriptionRequest);
+                return await Description(document, descriptionRequest);
             }
             catch (Exception) { }
 
             return Content(null);
         }
 
-        private ActionResult Description(HtmlDocument document, DescriptionRequest descriptionRequest)
+        private async Task<ActionResult> Description(HtmlDocument document, DescriptionRequest descriptionRequest)
         {
             string icon = null;
             string title = null;
@@ -122,7 +133,7 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                                 icon = descriptionRequest.GetBaseUrl() + icon;
                             else if (!icon.StartsWith("http"))
                                 icon = descriptionRequest.GetBaseUrl() + "/" + icon;
-                            icon = DownloadIcon(new Uri(icon), descriptionRequest);
+                            icon = await DownloadIcon(new Uri(icon), descriptionRequest);
                         }
                         break;
                     }
@@ -137,7 +148,7 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
             // download the icon from the default location if the icon
             // cannot be retrieved from the document
             if (icon == null) {
-                icon = DownloadIcon(new Uri(string.Format("{0}://{1}/favicon.ico",
+                icon = await DownloadIcon(new Uri(string.Format("{0}://{1}/favicon.ico",
                     descriptionRequest.protocol, descriptionRequest.domain)), descriptionRequest);
             }
 
@@ -155,7 +166,7 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
             });
         }
 
-        private string DownloadIcon(Uri url, DescriptionRequest descriptionRequest)
+        private async Task<string> DownloadIcon(Uri url, DescriptionRequest descriptionRequest)
         {
             if (url.Host == descriptionRequest.domain)
                 url = new UriBuilder(url) { Host = descriptionRequest.ipAddress }.Uri;
@@ -167,7 +178,7 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                 request.Host = descriptionRequest.domain;
 
             try {
-                using (var response = (HttpWebResponse)request.GetResponse()) {
+                using (var response = (HttpWebResponse) await request.GetResponseAsync()) {
                     if (response.StatusCode == HttpStatusCode.OK) {
                         if (string.IsNullOrEmpty(response.ContentType) || !response.ContentType.StartsWith("image"))
                             return null;
@@ -191,7 +202,7 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
             return null;
         }
 
-        public ActionResult Vendor(string mac)
+        public async Task<ActionResult> Vendor(string mac)
         {
             if (string.IsNullOrEmpty(mac))
                 return Content(null);
@@ -200,7 +211,7 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                 using (var client = new WebClient())
                 using (var stream = client.OpenRead(string.Format("https://api.macvendors.com/{0}", mac)))
                 using (var textReader = new StreamReader(stream, Encoding.UTF8, true)) {
-                    var vendor = textReader.ReadToEnd();
+                    var vendor = await textReader.ReadToEndAsync();
                     LogMessageRelay.StoreVendor(mac, vendor);
                     return Content(vendor);
                 }

@@ -79,6 +79,7 @@ namespace DnsmasqLogMonitoringAndAnalysis
         public static readonly string IconsDirPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "icons");
         public static readonly string DescriptionsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "descriptions.txt");
         public static readonly string VendorsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "vendors.txt");
+        public static readonly string HostnamesFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "hostnames.txt");
         public static readonly string LogDirPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
 
         public static string[] OldData(DateTime? fromDate = null)
@@ -117,6 +118,9 @@ namespace DnsmasqLogMonitoringAndAnalysis
 
         public static Dictionary<string, string> VendorsStorage
             = GetStorage<Dictionary<string, string>>(VendorsFilePath);
+
+        public static Dictionary<string, string> HostnamesStorage
+            = GetStorage<Dictionary<string, string>>(HostnamesFilePath);
 
         public LogMessageRelay(IHubContext<DnsmasqQueriesHub> hubContext)
         {
@@ -204,6 +208,11 @@ namespace DnsmasqLogMonitoringAndAnalysis
         public static void StoreVendor(string mac, string description)
         {
             StoreValue(mac, description, VendorsStorage, VendorsFilePath);
+        }
+
+        public static void StoreHostname(string ipAddress, string hostname)
+        {
+            StoreValue(ipAddress, hostname, HostnamesStorage, HostnamesFilePath);
         }
 
         private static void StoreValue(string key, string value, Dictionary<string, string> storage, string filePath)

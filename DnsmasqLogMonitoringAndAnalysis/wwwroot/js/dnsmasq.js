@@ -691,7 +691,7 @@
                 dnsmasq.hostnames[ipAddress] = queue;
                 queue.push(storageObject);
 
-                $.post(dnsmasq.settings.HostnameResolveUrl + '/' + ipAddress, function (data) {
+                $.get(dnsmasq.settings.HostnameResolveUrl + '/' + ipAddress, function (data) {
                     // remove the domain name at the end of the hostname
                     if (data !== null && data.endsWith(dnsmasq.settings.DomainName)) {
                         data = data.substring(0, data.length - dnsmasq.settings.DomainName.length - 1);
@@ -824,9 +824,15 @@
                     }
 
                     if (typeof hostname !== 'undefined' && hostname.length) {
-                        dnsmasq.hostnames[ip] = hostname;
                         if (typeof client !== 'undefined') {
                             client.hostname = hostname;
+                        }
+
+                        if (dnsmasq.hostnames[ip] !== hostname) {
+                            dnsmasq.hostnames[ip] = hostname;
+
+                            // cache the name on the server
+                            $.post(dnsmasq.settings.HostnameResolveUrl + '/' + ip, { hostname: hostname });
                         }
                     }
 
