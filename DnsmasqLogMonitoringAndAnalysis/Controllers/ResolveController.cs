@@ -1,8 +1,10 @@
 ﻿using HtmlAgilityPack;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
@@ -221,9 +223,23 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
             return Content(null);
         }
 
-        public ActionResult Data(DateTime? fromDate)
+        public async Task Data(DateTime? fromDate)
         {
-            return Ok(LogMessageRelay.OldData(fromDate));
+            Response.ContentType = "text/plain";
+
+            var files = LogMessageRelay.GetLogFiles(fromDate);
+
+            foreach (var file in files) {
+                using FileStream fileStream = new FileStream(
+                    file.FullName,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.ReadWrite);
+                await fileStream.CopyToAsync(Response.Body);
+                await Response.Body.FlushAsync();
+            }
+
+            Response.StatusCode = StatusCodes.Status200OK;
         }
     }
 

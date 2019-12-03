@@ -261,6 +261,7 @@
                                                 <th sort-direction options="category" order-by="key" title="Site"></th>
                                                 <th sort-direction options="category" order-by="requestors.length" title="Clients"></th>
                                                 <th sort-direction options="category" order-by="records.length" title="Subs"></th>
+                                                <th sort-direction options="category" order-by="totalRequests" title="Hits"></th>
                                                 <th sort-direction options="category" order-by="lastRequestTime" title="Last Time"></th>
                                             </tr>
                                         </thead>
@@ -273,15 +274,16 @@
                                                 </td>
                                                 <td><span ng-bind="topdomain.requestors.length | number" class="update-item value-{{topdomain.requestors.length}}"></span></td>
                                                 <td><span ng-bind="topdomain.records.length | number" class="update-item value-{{topdomain.records.length}}"></span></td>
+                                                <td><span ng-bind="topdomain.totalRequests | number" class="update-item value-{{topdomain.totalRequests}}"></span></td>
                                                 <td><span ng-bind="topdomain.lastRequestor.client.hostname ? topdomain.lastRequestor.client.hostname : topdomain.lastRequestor.client.key"></span>: <span title="{{topdomain.lastRequestTime}}" am-time-ago="topdomain.lastRequestTime"></span></td>
                                             </tr>
                                             <tr ng-repeat-end ng-if="!topdomain.expand.hidden">
-                                                <td colspan="4"><div domains-template domains="topdomain" dnsmasq="dnsmasq"></div></td>
+                                                <td colspan="5"><div domains-template domains="topdomain" dnsmasq="dnsmasq"></div></td>
                                             </tr>
                                         </tbody>
                                         <tfoot>
                                             <tr>
-                                                <td colspan="4">
+                                                <td colspan="5">
                                                     <div table-options-template records="category.records" options="category" dnsmasq="dnsmasq"></div>
                                                 </td>
                                             </tr>
@@ -348,7 +350,7 @@
                                     <table class="table table-condensed table-bordered">
                                         <thead>
                                             <tr class="warning">
-                                                <th sort-direction options="node" order-by="key" title="Domains"></th>
+                                                <th sort-direction options="node" order-by="key" title="Site"></th>
                                                 <th sort-direction options="node" order-by="categories" title="Categories"></th>
                                                 <th sort-direction options="node" order-by="totalDomains" title="Subs"></th>
                                                 <th sort-direction options="node" order-by="totalRequests" title="Requests"></th>

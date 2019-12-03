@@ -494,6 +494,7 @@
                             records: [],
                             requestors: [],
                             key: topDomainKey,
+                            totalRequests: 0,
                             lastRequestTime: loggedEvent.time,
                             lastRequestor: requestor,
                             expand: { hidden: true, sort: { orderBy: 'time', orderReverse: true }, limit: 20 }
@@ -513,6 +514,8 @@
                     }
 
                     toBeFilledWithDescription.push(catTopDomain);
+
+                    ++catTopDomain.totalRequests;
 
                     domain.category = categoryObj;
                 }
@@ -637,12 +640,20 @@
 
                 $scope.loading_data = true;
 
-                $.get($this.settings.OldDataUrl, { fromDate: fromDate.format('YYYY-MM-DDTHH:mm:ssZ') })
+                var parameters = {};
+
+                if (typeof fromDate !== 'undefined') {
+                    parameters.fromDate = fromDate.format('YYYY-MM-DDTHH:mm:ssZ');
+                }
+
+                $.get($this.settings.OldDataUrl, parameters)
                 .fail(function (msg) {
                     console.log('Load data failed with message: ' + JSON.stringify(msg));
                 })
                 .done($this.applyData).always(function () {
-                    $scope.loading_data = false;
+                    $scope.$apply(function () {
+                        $scope.loading_data = false;
+                    });
                 });
             },
             loadTodayData: function () {
@@ -655,6 +666,10 @@
                 this.loadData(moment().startOf('day').subtract(7, 'days'));
             },
             applyData: function (data) {
+                if (typeof data === 'string') {
+                    data = data.split('\n');
+                }
+
                 if (typeof data === 'undefined' || data.length <= 0) {
                     return;
                 }
@@ -728,7 +743,22 @@
         var queries = [];
         var cquery = null;
 
-        $(document).on("dnsmasq", function (event, line, imported) {
+        $(document).on("dnsmasq", processDnsmasq);
+
+        // query for the website description which processes 10 request at a time
+        setInterval(function () {
+            if (dnsmasq.descriptions.processingCount < 10) {
+                processDescription();
+            }
+        }, 100);
+
+        // query for the device's vendor information and it will process once per second
+        setInterval(processVendorInfo, 1000);
+
+        // load old data if any
+        $timeout(processSavedData);
+
+        function processDnsmasq(event, line, imported) {
             if (dnsmasq.dataOptions.pause) {
                 return;
             }
@@ -949,20 +979,7 @@
 
                 return moment(date.join(' '), 'YYYY MMM D HH:mm:ss');
             }
-        });
-
-        // query for the website description which processes 10 request at a time
-        setInterval(function () {
-            if (dnsmasq.descriptions.processingCount < 10) {
-                processDescription();
-            }
-        }, 100);
-
-        // query for the device's vendor information and it will process once per second
-        setInterval(processVendorInfo, 1000);
-
-        // load old data if any
-        $timeout(processSavedData);
+        }
 
         function isIP(ipaddress) {
             if (ipaddress === null || typeof ipaddress === 'undefined') {
@@ -1081,7 +1098,7 @@
 
             // process multiple lines for each time
             // interval to improve data throughput
-            var NUMBER_OF_LINES_PER_INTERVAL = 10;
+            var NUMBER_OF_LINES_PER_INTERVAL = 1000;
 
             // need to reverse the array to process correctly
             // the data with time in increasing position because
@@ -1105,7 +1122,7 @@
 
                 if (data.length > 0) {
                     var loggedEvent = data.pop(); // get the last line
-                    System.loggedEvent({ Message: loggedEvent, hidden: true });
+                    processDnsmasq(null, loggedEvent, true);
                     $scope.OldDataLoadedCount++;
                 } else {
                     clearInterval(interval);

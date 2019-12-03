@@ -84,13 +84,8 @@ namespace DnsmasqLogMonitoringAndAnalysis
 
         public static string[] OldData(DateTime? fromDate = null)
         {
-            var path = LogDirPath;
             var data = new List<string>();
-
-            DirectoryInfo info = new DirectoryInfo(path);
-            FileInfo[] files = info.GetFiles()
-                .Where(x => x.LastWriteTime >= (fromDate ?? DateTime.MinValue))
-                .OrderBy(p => p.LastWriteTime).ToArray();
+            var files = GetLogFiles(fromDate);
 
             foreach (var file in files) {
                 using FileStream fileStream = new FileStream(
@@ -164,6 +159,17 @@ namespace DnsmasqLogMonitoringAndAnalysis
                     }
                 }
             });
+        }
+
+        public static IOrderedEnumerable<FileInfo> GetLogFiles(DateTime? fromDate = null)
+        {
+            var path = LogDirPath;
+
+            DirectoryInfo info = new DirectoryInfo(path);
+
+            return info.GetFiles()
+                .Where(x => x.LastWriteTime >= (fromDate ?? DateTime.MinValue))
+                .OrderBy(p => p.LastWriteTime);
         }
 
         public static string[] GetFile(string fileName)
