@@ -68,17 +68,17 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                     descriptionRequest.url = string.Format("{0}://{1}", descriptionRequest.protocol, descriptionRequest.ipAddress);
                     var request = (HttpWebRequest)WebRequest.Create(descriptionRequest.url);
                     request.Host = descriptionRequest.domain;
+                    request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36";
                     try {
-                        using (var response = (HttpWebResponse) await request.GetResponseAsync()) {
-                            statusCode = response.StatusCode;
+                        using var response = (HttpWebResponse)await request.GetResponseAsync();
 
-                            if (statusCode == HttpStatusCode.OK) {
-                                var encoding = Encoding.GetEncoding(response.CharacterSet);
+                        statusCode = response.StatusCode;
 
-                                using (var responseStream = response.GetResponseStream())
-                                using (var reader = new StreamReader(responseStream, encoding))
-                                    document.LoadHtml(reader.ReadToEnd());
-                            }
+                        if (statusCode == HttpStatusCode.OK) {
+                            var encoding = GetEncoding(response);
+                            using var responseStream = response.GetResponseStream();
+                            using var reader = new StreamReader(responseStream, encoding);
+                            document.LoadHtml(reader.ReadToEnd());
                         }
                     }
                     catch (WebException we) {
@@ -99,6 +99,16 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
             catch (Exception) { }
 
             return Content(null);
+        }
+
+        private Encoding GetEncoding(HttpWebResponse response)
+        {
+            try {
+                return Encoding.GetEncoding(response.CharacterSet);
+            }
+            catch (Exception) { }
+
+            return Encoding.Default;
         }
 
         private async Task<ActionResult> Description(HtmlDocument document, DescriptionRequest descriptionRequest)

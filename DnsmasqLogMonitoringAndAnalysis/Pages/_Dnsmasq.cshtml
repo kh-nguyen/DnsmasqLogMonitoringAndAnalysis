@@ -285,7 +285,7 @@
                                             <tr ng-repeat-start="topdomain in category.records | orderBy:category.expand.sort.orderBy:category.expand.sort.orderReverse | limitTo: category.expand.limit:((category.expand.page - 1) * category.expand.limit)">
                                                 <td>
                                                     <span toggle-hidden options="topdomain.expand"></span>
-                                                    <img ng-if="topdomain.icon" class="icon" ng-src="{{topdomain.icon}}" alt="" />
+                                                    <img ng-if="topdomain.icon || topdomain.description.icon" class="icon" ng-src="{{topdomain.icon ? topdomain.icon : topdomain.description.icon}}" alt="" />
                                                     <span ng-bind="topdomain.key"></span>
                                                 </td>
                                                 <td><span ng-bind="topdomain.requestors.length | number" class="update-item value-{{topdomain.requestors.length}}"></span></td>
