@@ -18,7 +18,7 @@
                     <li><a href="#" ng-click="dnsmasq.loadOneWeekData()">1 Week</a></li>
                 </ul>
             </div>
-            <span ng-if="loading_data" class="glyphicon glyphicon-hdd" aria-hidden="true" title="Loading data..."></span>
+            <span ng-if="loading_data" class="glyphicon glyphicon-hdd text-primary" aria-hidden="true" title="Loading data..."></span>
             <span ng-show="!loading_data && OldDataLoadedCount == OldDataCount" class="btn btn-primary fileinput-button" title="Click to import dnsmasq log data from a file">
                 <i class="glyphicon glyphicon-upload"></i>
                 <input type="file"
@@ -356,9 +356,11 @@
                                 <td><span ng-bind="node.totalDomains | number" class="update-item value-{{node.totalDomains}}"></span></td>
                                 <td><span ng-bind="node.totalRequests | number" class="update-item value-{{node.totalRequests}}"></span></td>
                                 <td>
-                                    <img ng-if="node.lastDomain.icon || node.lastDomain.description.icon" class="icon" ng-src="{{node.lastDomain.icon ? node.lastDomain.icon : node.lastDomain.description.icon}}" alt="" />
-                                    <span ng-bind="node.lastDomain.key"></span>:
-                                    <span title="{{node.lastRequestTime}}" am-time-ago="node.lastRequestTime"></span>
+                                    <div ng-repeat="topdomain in node.records | orderBy:'lastRequestTime':true | limitTo:5">
+                                        <img ng-if="topdomain.icon || topdomain.description.icon" class="icon" ng-src="{{topdomain.icon ? topdomain.icon : topdomain.description.icon}}" alt="" />
+                                        <span class="text-primary" ng-bind="topdomain.key"></span>:
+                                        <span title="{{topdomain.lastRequestTime}}" am-time-ago="topdomain.lastRequestTime"></span>
+                                    </div>
                                 </td>
                             </tr>
                             <tr ng-repeat-end ng-if="!node.expand.hidden">

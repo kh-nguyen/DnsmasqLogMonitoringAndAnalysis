@@ -424,7 +424,6 @@
                 if (client.lastRequestTime <= loggedEvent.time) {
                     topDomain.lastRequestTime = loggedEvent.time;
                     client.lastRequestTime = loggedEvent.time;
-                    client.lastDomain = topDomain;
                 }
                 toBeFilledWithDescription.push(topDomain);
 
@@ -742,22 +741,26 @@
                     if (data !== ipAddress && data.length) {
                         $scope.$apply(function () {
                             $.each(queue, function (index, obj) {
-                                obj.hostname = data;
-
-                                if (typeof obj.hostnames === 'undefined') {
-                                    obj.hostnames = [];
-                                }
-                                var hostname = obj.hostnames.find(function (x) { return x.name === data; });
-                                if (typeof hostname === 'undefined') {
-                                    obj.hostnames.push({ name: data, time: new Date() });
-                                }
+                                assignHostname(obj, data);
                             });
                         });
                     }
                 });
             }
 
-            storageObject.hostname = hostname;
+            assignHostname(storageObject, hostname);
+
+            function assignHostname(client, hostname) {
+                client.hostname = hostname;
+
+                if (typeof client.hostnames === 'undefined') {
+                    client.hostnames = [];
+                }
+                var obj = client.hostnames.find(function (x) { return x.name === hostname; });
+                if (typeof obj === 'undefined') {
+                    client.hostnames.push({ name: hostname, time: new Date() });
+                }
+            }
         };
 
         // load category lists

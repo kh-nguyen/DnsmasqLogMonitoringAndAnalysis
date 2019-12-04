@@ -229,7 +229,8 @@ namespace DnsmasqLogMonitoringAndAnalysis
                         if (storage[key].GetHashCode() != value.GetHashCode()) {
                             storage[key] = value;
 
-                            File.WriteAllText(filePath, StripBrackets(JsonConvert.SerializeObject(storage)));
+                            File.WriteAllText(filePath, string.Join(string.Empty,
+                                storage.Select(x => GetLine(new Dictionary<string, string> { { x.Key, x.Value } }))));
                         }
 
                         return;
@@ -289,7 +290,7 @@ namespace DnsmasqLogMonitoringAndAnalysis
             var info = new DirectoryInfo(IconsDirPath);
 
             // only load files that are not too old
-            var files = info.GetFiles().Where(x => x.CreationTime >= DateTime.Now.AddDays(-30));
+            var files = info.GetFiles();
 
             foreach (var file in files)
             {
