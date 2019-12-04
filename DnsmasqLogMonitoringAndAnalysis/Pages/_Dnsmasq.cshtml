@@ -126,8 +126,24 @@
     </div>
 
     <div class="row">
-        <div class="col-xs-12" ng-show="OldDataLoadedCount != OldDataCount">
-            <h6><span class="glyphicon glyphicon-warning-sign"></span> Loading <span ng-bind="OldDataLoadedCount | number"></span> of <span ng-bind="OldDataCount | number"></span> lines...<button class="btn btn-default btn-sm" ng-click="OldData = []" title="Cancel loading data process"><span class="glyphicon glyphicon-remove" aria-hidden="true"></span></button></h6>
+        <div class="col-xs-12" ng-show="loading_data">
+            <h6>
+                <span class="glyphicon glyphicon-warning-sign"></span>
+                Loading
+                <span ng-if="OldDataFileInfo">
+                    <span ng-bind="OldDataFileInfo.name" class="text-primary"></span>
+                    <span ng-bind="OldDataFileInfo.length | formatBytes"></span>
+                </span>
+                <span ng-if="OldDataLoadedCount != OldDataCount">
+                    <span ng-bind="OldDataLoadedCount | number"></span>
+                    of
+                    <span ng-bind="OldDataCount | number"></span>
+                    lines...
+                </span>
+                <button class="btn btn-default btn-sm" ng-click="OldDataCancel = true" title="Cancel loading data process">
+                    <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
+                </button>
+            </h6>
         </div>
 
         <div class="col-xs-12">

@@ -630,6 +630,10 @@
             importData: function () {
                 var $this = this;
 
+                if (dnsmasq.settings.reset_data_when_load_log_files === true) {
+                    dnsmasq.clearData();
+                }
+
                 $scope.loading_data = true;
                 $scope.OldData = atob($scope.OldData.split(',')[1]);
                 $this.applyData($scope.OldData.split('\n'));
@@ -638,22 +642,47 @@
             loadData: function (fromDate) {
                 var $this = this;
 
-                $scope.loading_data = true;
-
                 var parameters = {};
 
                 if (typeof fromDate !== 'undefined') {
                     parameters.fromDate = fromDate.format('YYYY-MM-DDTHH:mm:ssZ');
                 }
 
-                $.get($this.settings.OldDataUrl, parameters)
-                .fail(function (msg) {
-                    console.log('Load data failed with message: ' + JSON.stringify(msg));
-                })
-                .done($this.applyData).always(function () {
-                    $scope.$apply(function () {
-                        $scope.loading_data = false;
-                    });
+                $.get($this.settings.GetLogFilesUrl, parameters).done(function (files) {
+                    if (dnsmasq.settings.reset_data_when_load_log_files === true) {
+                        dnsmasq.clearData();
+                    }
+
+                    files = files.reverse();
+
+                    process();
+
+                    function process() {
+                        if (typeof files === 'undefined' || files.length <= 0 || $scope.OldDataCancel === true) {
+                            done();
+
+                            return;
+                        }
+
+                        var file = files.pop(); // get the last element
+
+                        $scope.$apply(function () {
+                            $scope.loading_data = true;
+                            $scope.OldDataFileInfo = file;
+                        });
+
+                        $.get($this.settings.OldDataUrl, { fileName: file.name }).fail(function (msg) {
+                            console.log('Load data failed with message: ' + JSON.stringify(msg));
+                        }).done($this.applyData).always(process);
+                    }
+
+                    function done() {
+                        $scope.$apply(function () {
+                            $scope.loading_data = false;
+                            $scope.OldDataFileInfo = null;
+                            $scope.OldDataCancel = false;
+                        });
+                    }
                 });
             },
             loadTodayData: function () {
@@ -672,10 +701,6 @@
 
                 if (typeof data === 'undefined' || data.length <= 0) {
                     return;
-                }
-
-                if (dnsmasq.settings.reset_data_when_load_log_files === true) {
-                    dnsmasq.clearData();
                 }
 
                 $scope.OldData = data;
@@ -1118,6 +1143,10 @@
             });
 
             function process() {
+                if ($scope.OldDataCancel === true) {
+                    $scope.OldData = [];
+                }
+
                 var data = $scope.OldData;
 
                 if (data.length > 0) {

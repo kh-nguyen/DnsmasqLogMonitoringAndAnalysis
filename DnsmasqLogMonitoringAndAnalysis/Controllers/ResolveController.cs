@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
@@ -223,11 +224,14 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
             return Content(null);
         }
 
-        public async Task Data(DateTime? fromDate)
+        public async Task Data(DateTime? fromDate, string fileName)
         {
             Response.ContentType = "text/plain";
 
             var files = LogMessageRelay.GetLogFiles(fromDate);
+
+            if (!string.IsNullOrEmpty(fileName))
+                files = files.Where(x => x.Name == fileName);
 
             foreach (var file in files) {
                 using FileStream fileStream = new FileStream(
@@ -240,6 +244,14 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
             }
 
             Response.StatusCode = StatusCodes.Status200OK;
+        }
+
+        public ActionResult LogFiles(DateTime? fromDate)
+        {
+            return Ok(LogMessageRelay.GetLogFiles(fromDate).Select(x => new {
+                x.Name,
+                x.Length
+            }));
         }
     }
 

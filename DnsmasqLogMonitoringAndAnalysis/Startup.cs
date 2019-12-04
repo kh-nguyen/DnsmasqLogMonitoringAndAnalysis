@@ -161,7 +161,7 @@ namespace DnsmasqLogMonitoringAndAnalysis
             });
         }
 
-        public static IOrderedEnumerable<FileInfo> GetLogFiles(DateTime? fromDate = null)
+        public static IEnumerable<FileInfo> GetLogFiles(DateTime? fromDate = null)
         {
             var path = LogDirPath;
 
