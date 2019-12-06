@@ -20,7 +20,7 @@ namespace DnsmasqLogMonitoringAndAnalysis
 {
     public class Startup
     {
-        public static string NETWORK_PORT = Environment.GetEnvironmentVariable("DnsmasqDataPort");
+        public static int NetworkPort = 514; // default listen port
 
         public Startup(IConfiguration configuration)
         {
@@ -66,9 +66,10 @@ namespace DnsmasqLogMonitoringAndAnalysis
             log4net.GlobalContext.Properties["LogDirPath"] = LogMessageRelay.LogDirPath;
             loggerFactory.AddLog4Net();
 
-            if (string.IsNullOrEmpty(NETWORK_PORT))
-                throw new ArgumentNullException("There is no dnsmasq port in the enviroment variable.");
-            app.ApplicationServices.GetService<LogMessageRelay>().Listen(int.Parse(NETWORK_PORT));
+            var networkPortPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "port.txt");
+            if (File.Exists(networkPortPath))
+                int.TryParse(File.ReadAllText(networkPortPath), out NetworkPort);
+            app.ApplicationServices.GetService<LogMessageRelay>().Listen(NetworkPort);
         }
     }
 
@@ -129,30 +130,28 @@ namespace DnsmasqLogMonitoringAndAnalysis
             Task.Factory.StartNew(() => {
                 while (true) {
                     try {
-                        using (var client = new UdpClient(port)) {
-                            var sender = new IPEndPoint(IPAddress.Any, 0);
+                        using var client = new UdpClient(port);
+                        var sender = new IPEndPoint(IPAddress.Any, 0);
 
-                            while (true) {
-                                var buffer = client.Receive(ref sender);
+                        while (true) {
+                            var buffer = client.Receive(ref sender);
 
-                                // Client is set to null when the UdpClient is disposed
-                                // client.Receive will return an empty byte[] when the connection is closed.
-                                if (buffer.Length == 0 && client.Client == null)
-                                    return;
+                            // Client is set to null when the UdpClient is disposed
+                            // client.Receive will return an empty byte[] when the connection is closed.
+                            if (buffer.Length == 0 && client.Client == null)
+                                return;
 
-                                var stringLoggingEvent = System.Text.Encoding.Default.GetString(buffer);
+                            var stringLoggingEvent = System.Text.Encoding.Default.GetString(buffer);
 
-                                using (StringReader reader = new StringReader(stringLoggingEvent)) {
-                                    string line = string.Empty;
+                            using StringReader reader = new StringReader(stringLoggingEvent);
+                            string line = string.Empty;
 
-                                    while ((line = reader.ReadLine()) != null) {
-                                        hubContext.Clients.All.SendAsync("loggedEvent", line);
+                            while ((line = reader.ReadLine()) != null) {
+                                hubContext.Clients.All.SendAsync("loggedEvent", line);
 
-                                        log4net.LogManager.GetLogger(System.Reflection
-                                            .MethodBase.GetCurrentMethod().DeclaringType)
-                                            .Info(line);
-                                    }
-                                }
+                                log4net.LogManager.GetLogger(System.Reflection
+                                    .MethodBase.GetCurrentMethod().DeclaringType)
+                                    .Info(line);
                             }
                         }
                     }
@@ -257,7 +256,7 @@ namespace DnsmasqLogMonitoringAndAnalysis
         private static string StripBrackets(string json)
         {
             json = json.Substring(1); // remove {
-            json = json.Substring(0, json.Length - 1); // remove }
+            json = json[0..^1]; // remove }
             json = json.Trim();
             return json;
         }

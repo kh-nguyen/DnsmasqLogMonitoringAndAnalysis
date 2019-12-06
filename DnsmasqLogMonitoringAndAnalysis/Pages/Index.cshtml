@@ -13,7 +13,7 @@
             categoriesOptions = new { ignored = new { data = LogMessageRelay.GetFile("ignoredcategories.txt") } },
             settings = new {
                 DomainName = "lan",
-                NetworkPort = Startup.NETWORK_PORT,
+                NetworkPort = Startup.NetworkPort,
                 HostnameResolveUrl = "/api/Resolve/Hostname",
                 GetDescriptionUrl = "/api/Resolve/Description",
                 GetVendorInfoUrl = "/api/Resolve/Vendor",
