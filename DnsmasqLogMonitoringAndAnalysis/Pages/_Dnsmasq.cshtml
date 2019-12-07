@@ -4,7 +4,7 @@
         <mark ng-if="dnsmasq.dataOptions.pause"> pausing...</mark>
         <div class="pull-right">
             <a class="btn btn-default btn-sm hidden" ng-click="dnsmasq.saveData()" title="Save current data to disk"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span></a>
-            <div class="btn-group btn-sm padding-zero" ng-if="!loading_data && OldDataLoadedCount == OldDataCount">
+            <div class="btn-group btn-sm padding-zero" ng-if="!loading_data">
                 <button type="button" class="btn btn-default" ng-click="dnsmasq.loadData()" title="Load all saved data from server">
                     <span class="glyphicon glyphicon-open" aria-hidden="true"></span>
                 </button>
@@ -19,7 +19,7 @@
                 </ul>
             </div>
             <span ng-if="loading_data" class="glyphicon glyphicon-hdd text-primary" aria-hidden="true" title="Loading data..."></span>
-            <span ng-show="!loading_data && OldDataLoadedCount == OldDataCount" class="btn btn-primary fileinput-button" title="Click to import dnsmasq log data from a file">
+            <span ng-show="!loading_data" class="btn btn-primary fileinput-button" title="Click to import dnsmasq log data from a file">
                 <i class="glyphicon glyphicon-upload"></i>
                 <input type="file"
                        file-reader

@@ -627,16 +627,12 @@
                 this.dataOptions.count = 0;
             },
             importData: function () {
-                var $this = this;
-
                 if (dnsmasq.settings.reset_data_when_load_log_files === true) {
                     dnsmasq.clearData();
                 }
 
-                $scope.loading_data = true;
                 $scope.OldData = atob($scope.OldData.split(',')[1]);
-                $this.applyData($scope.OldData.split('\n'));
-                $scope.loading_data = false;
+                applySaveData($scope.OldData.split('\n'));
             },
             loadData: function (fromDate) {
                 var $this = this;
@@ -652,36 +648,9 @@
                         dnsmasq.clearData();
                     }
 
-                    files = files.reverse();
+                    $scope.OldDataFiles = files.reverse();
 
-                    process();
-
-                    function process() {
-                        if (typeof files === 'undefined' || files.length <= 0 || $scope.OldDataCancel === true) {
-                            done();
-
-                            return;
-                        }
-
-                        var file = files.pop(); // get the last element
-
-                        $scope.$apply(function () {
-                            $scope.loading_data = true;
-                            $scope.OldDataFileInfo = file;
-                        });
-
-                        $.get($this.settings.OldDataUrl, { fileName: file.name }).fail(function (msg) {
-                            console.log('Load data failed with message: ' + JSON.stringify(msg));
-                        }).done($this.applyData).always(process);
-                    }
-
-                    function done() {
-                        $scope.$apply(function () {
-                            $scope.loading_data = false;
-                            $scope.OldDataFileInfo = null;
-                            $scope.OldDataCancel = false;
-                        });
-                    }
+                    processSavedFiles();
                 });
             },
             loadTodayData: function () {
@@ -692,18 +661,6 @@
             },
             loadOneWeekData: function () {
                 this.loadData(moment().startOf('day').subtract(7, 'days'));
-            },
-            applyData: function (data) {
-                if (typeof data === 'string') {
-                    data = data.split('\n');
-                }
-
-                if (typeof data === 'undefined' || data.length <= 0) {
-                    return;
-                }
-
-                $scope.OldData = data;
-                processSavedData();
             },
             saveData: function () {
                 var blob = new Blob([JSON.stringify(dnsmasq)], { type: 'application/json' });
@@ -1119,6 +1076,46 @@
             });
         }
 
+        function processSavedFiles() {
+            var files = $scope.OldDataFiles;
+
+            if (files === null || files.length <= 0 || $scope.OldDataCancel === true) {
+                $scope.$apply(function () {
+                    $scope.loading_data = false;
+                    $scope.OldDataFileInfo = null;
+                    $scope.OldDataFiles = null;
+                    $scope.OldDataCancel = false;
+                });
+
+                return;
+            }
+
+            var file = files.pop(); // get the last element
+
+            $scope.$apply(function () {
+                $scope.loading_data = true;
+                $scope.OldDataFileInfo = file;
+            });
+
+            $.get(dnsmasq.settings.OldDataUrl, { fileName: file.name }).fail(function (msg) {
+                console.log('Load data failed with message: ' + JSON.stringify(msg));
+            }).done(applySaveData);
+        }
+
+        function applySaveData(data) {
+            if (typeof data === 'string') {
+                data = data.split('\n');
+            }
+
+            if (typeof data === 'undefined' || data.length <= 0) {
+                return;
+            }
+
+            $scope.OldData = data;
+
+            processSavedData();
+        }
+
         function processSavedData() {
             if ($scope.OldData === null || typeof $scope.OldData !== 'object') {
                 return;
@@ -1136,6 +1133,7 @@
 
             $scope.OldDataCount = $scope.OldData.length;
             $scope.OldDataLoadedCount = 0;
+            $scope.loading_data = true;
 
             var interval = setInterval(function () {
                 var i = 0;
@@ -1162,7 +1160,13 @@
                         $scope.OldData = [];
                         $scope.OldDataCount = 0;
                         $scope.OldDataLoadedCount = 0;
+                        $scope.loading_data = false;
                     });
+                    processSavedFiles();
+
+                    // force to cancel the loop so that this block
+                    // will not repeat multiple times
+                    NUMBER_OF_LINES_PER_INTERVAL = 0
                 }
             }
         }
