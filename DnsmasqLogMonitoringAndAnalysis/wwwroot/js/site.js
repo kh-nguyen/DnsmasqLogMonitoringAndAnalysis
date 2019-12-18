@@ -44,10 +44,10 @@
 
         // convert it to an object if it is a string
         if (typeof loggedEvent === 'string') {
-            loggedEvent = { Message: loggedEvent };
+            loggedEvent = { time: new Date(), message: loggedEvent };
         }
 
-        var message = loggedEvent.Message;
+        var message = loggedEvent.message;
 
         if (typeof message === 'string') {
             // check if it is a dnsmasq log and trigger the event if it is

@@ -141,13 +141,12 @@ namespace DnsmasqLogMonitoringAndAnalysis
                             if (buffer.Length == 0 && client.Client == null)
                                 return;
 
-                            var stringLoggingEvent = System.Text.Encoding.Default.GetString(buffer);
-
+                            var stringLoggingEvent = Encoding.Default.GetString(buffer);
                             using StringReader reader = new StringReader(stringLoggingEvent);
                             string line = string.Empty;
 
                             while ((line = reader.ReadLine()) != null) {
-                                hubContext.Clients.All.SendAsync("loggedEvent", line);
+                                SendMessage(line);
 
                                 log4net.LogManager.GetLogger(System.Reflection
                                     .MethodBase.GetCurrentMethod().DeclaringType)
@@ -160,6 +159,11 @@ namespace DnsmasqLogMonitoringAndAnalysis
                     }
                 }
             });
+        }
+
+        public void SendMessage(string message)
+        {
+            hubContext.Clients.All.SendAsync("loggedEvent", message);
         }
 
         public static IEnumerable<FileInfo> GetLogFiles(DateTime? fromDate = null)
@@ -192,7 +196,8 @@ namespace DnsmasqLogMonitoringAndAnalysis
             if (File.Exists(fileName)) {
                 if (File.ReadAllBytes(fileName).SequenceEqual(data))
                     return;
-            } else {
+            }
+            else {
                 var sameNames = Directory.EnumerateFiles(IconsDirPath, $"{domain}.*")
                     .Where(x => Path.GetFileNameWithoutExtension(x) == domain);
 
@@ -293,8 +298,7 @@ namespace DnsmasqLogMonitoringAndAnalysis
             // only load files that are not too old
             var files = info.GetFiles();
 
-            foreach (var file in files)
-            {
+            foreach (var file in files) {
                 var contentType = GetMimeType(file.Extension);
                 var domain = Path.GetFileNameWithoutExtension(file.Name);
                 var icon = string.Format("data:{0};base64,{1}", contentType,
