@@ -310,7 +310,6 @@
                 settings: {
                     bare_or_www_only: false,
                     disable_website_description: false,
-                    ignore_data_with_future_date_log_files: true,
                     reset_data_when_load_log_files: true,
                     show_raw_data_when_import: false,
                     show_raw_data_dnsmasq_only: true
@@ -334,10 +333,6 @@
                     var toBeFilledWithDescription = [];
 
                     if ($.inArray($.trim(loggedEvent.requestor), dnsmasq.ignored.data) >= 0) {
-                        return;
-                    }
-
-                    if (loggedEvent.time > new Date() && loggedEvent.imported && dnsmasq.settings.ignore_data_with_future_date_log_files) {
                         return;
                     }
 
@@ -627,32 +622,50 @@
                     this.resolversOptions.sum.totalRequests = 0;
                     this.dataOptions.count = 0;
                 },
-                importData: function() {
-                    if (dnsmasq.settings.reset_data_when_load_log_files === true) {
-                        dnsmasq.clearData();
-                    }
+                importData: function () {
+                    var $this = this;
 
-                    $scope.OldData = atob($scope.OldData.split(',')[1]);
-                    applySaveData($scope.OldData.split('\n'));
+                    $this.initializeLoadData(process);
+
+                    function process() {
+                        if ($this.icons.loaded !== true || $this.descriptions.loaded !== true) {
+                            return;
+                        }
+
+                        if ($this.settings.reset_data_when_load_log_files === true) {
+                            dnsmasq.clearData();
+                        }
+
+                        $scope.OldData = atob($scope.OldData.split(',')[1]);
+                        applySaveData($scope.OldData.split('\n'));
+                    }
                 },
                 loadData: function(fromDate) {
                     var $this = this;
 
-                    var parameters = {};
+                    $this.initializeLoadData(process);
 
-                    if (typeof fromDate !== 'undefined') {
-                        parameters.fromDate = fromDate.format('YYYY-MM-DDTHH:mm:ssZ');
-                    }
-
-                    $.get($this.settings.GetLogFilesUrl, parameters).done(function(files) {
-                        if (dnsmasq.settings.reset_data_when_load_log_files === true) {
-                            dnsmasq.clearData();
+                    function process() {
+                        if ($this.icons.loaded !== true || $this.descriptions.loaded !== true) {
+                            return;
                         }
 
-                        $scope.OldDataFiles = files.reverse();
+                        var parameters = {};
 
-                        processSavedFiles();
-                    });
+                        if (typeof fromDate !== 'undefined') {
+                            parameters.fromDate = fromDate.format('YYYY-MM-DDTHH:mm:ssZ');
+                        }
+
+                        $.get($this.settings.GetLogFilesUrl, parameters).done(function (files) {
+                            if (dnsmasq.settings.reset_data_when_load_log_files === true) {
+                                dnsmasq.clearData();
+                            }
+
+                            $scope.OldDataFiles = files.reverse();
+
+                            processSavedFiles();
+                        });
+                    }
                 },
                 loadTodayData: function() {
                     this.loadData(moment().startOf('day'));
@@ -662,6 +675,29 @@
                 },
                 loadOneWeekData: function() {
                     this.loadData(moment().startOf('day').subtract(7, 'days'));
+                },
+                initializeLoadData: function (callback) {
+                    var $this = this;
+
+                    // load all icons set if not done yet
+                    if ($this.icons.loaded !== true) {
+                        $.get($this.settings.GetIconsUrl).done(function (data) {
+                            $.extend($this.icons, data);
+                            $this.icons.loaded = true;
+                            callback();
+                        });
+                    }
+
+                    // load all descriptions set if not done yet
+                    if ($this.descriptions.loaded !== true) {
+                        $.get($this.settings.GetDescriptionsUrl).done(function (data) {
+                            $.extend($this.descriptions, data);
+                            $this.descriptions.loaded = true;
+                            callback();
+                        });
+                    }
+
+                    callback();
                 },
                 saveData: function() {
                     var blob = new Blob([JSON.stringify(dnsmasq)], { type: 'application/json' });
@@ -974,7 +1010,15 @@
                     date.push(day);
                     date.push(time);
 
-                    return moment(date.join(' '), 'YYYY MMM D HH:mm:ss');
+                    date = moment(date.join(' '), 'YYYY MMM D HH:mm:ss');
+
+                    // because of missing year info in the log, we can assume
+                    // future date value is for the time of the previous year
+                    if (date > new Date()) {
+                        date = date.subtract(1, 'years');
+                    }
+
+                    return date;
                 }
             }
 
@@ -1073,9 +1117,7 @@
 
             function fillDescription(queue, data) {
                 $.each(queue, function(index, obj) {
-                    if (data.hasDescription()) {
-                        obj.description = data;
-                    }
+                    obj.description = data;
 
                     if (typeof data.icon === 'string') {
                         dnsmasq.icons[data.domain] = data.icon;
@@ -1157,6 +1199,7 @@
 
                 function process() {
                     if ($scope.OldDataCancel === true) {
+                        $scope.OldDataCancel = false;
                         $scope.OldData = [];
                     }
 

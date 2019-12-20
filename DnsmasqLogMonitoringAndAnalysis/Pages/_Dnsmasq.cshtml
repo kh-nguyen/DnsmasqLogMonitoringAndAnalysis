@@ -114,7 +114,6 @@
                     <div><input type="checkbox" ng-model="dnsmasq.settings.show_raw_data_when_import" />&nbsp;Show raw data when importing log files</div>
                     <div><input type="checkbox" ng-model="dnsmasq.settings.show_raw_data_dnsmasq_only" />&nbsp;Show only dnsmasq log messages in the raw data table</div>
                     <div><input type="checkbox" ng-model="dnsmasq.settings.reset_data_when_load_log_files" />&nbsp;Clear current data when importing log files</div>
-                    <div><input type="checkbox" ng-model="dnsmasq.settings.ignore_data_with_future_date_log_files" />&nbsp;Ignore data with future date when importing log files</div>
                     <div title="Usefully to keep only main domains (www.website.com or website.com) instead of the ones automatically visited by a program on the client's device"><input type="checkbox" ng-model="dnsmasq.settings.bare_or_www_only" />&nbsp;Keep bare or WWW domains only</div>
                 </div>
             </fieldset>
@@ -185,10 +184,12 @@
                                 <td><span ng-bind="domain.totalRequests | number" class="update-item value-{{domain.totalRequests}}"></span></td>
                                 <td><span ng-bind="domain.lastRequestor.client.hostname ? domain.lastRequestor.client.hostname : domain.lastRequestor.client.key" title="{{domain.lastRequestor.client.key}}"></span>: <span title="{{domain.lastRequestTime}}" am-time-ago="domain.lastRequestTime"></span></td>
                                 <td class="description" ng-if="!dnsmasq.settings.disable_website_description">
-                                    <div ng-if="domain.description.description || domain.description.title || domain.description.icon" title="{{domain.description.bodyText}}">
+                                    <div ng-if="domain.description" title="{{domain.description.bodyText}}">
                                         <img ng-if="domain.description.icon" class="icon" ng-src="{{domain.description.icon}}" alt="" />
-                                        <span class="text-primary" ng-if="domain.description.subdomain"><span ng-bind="domain.description.subdomain"></span>:</span>
-                                        <small ng-bind-html="domain.description.description ? domain.description.description : domain.description.title | html"></small>
+                                        <span ng-if="domain.description.subdomain" class="text-primary" ng-bind="domain.description.subdomain" title="{{domain.description.domain}}"></span>
+                                        <span ng-if="domain.description.description || domain.description.title">
+                                            <small ng-bind-html="domain.description.description ? domain.description.description : domain.description.title | html"></small>
+                                        </span>
                                     </div>
                                 </td>
                             </tr>
@@ -358,7 +359,7 @@
                                 <td>
                                     <div ng-repeat="topdomain in node.records | orderBy:'lastRequestTime':true | limitTo:5">
                                         <img ng-if="topdomain.icon || topdomain.description.icon" class="icon" ng-src="{{topdomain.icon ? topdomain.icon : topdomain.description.icon}}" alt="" />
-                                        <span class="text-primary" ng-bind="topdomain.key"></span>:
+                                        <span class="text-primary" ng-bind="topdomain.key"></span>
                                         <span title="{{topdomain.lastRequestTime}}" am-time-ago="topdomain.lastRequestTime"></span>
                                     </div>
                                 </td>

@@ -254,6 +254,16 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
             Response.StatusCode = StatusCodes.Status200OK;
         }
 
+        public ActionResult GetIcons()
+        {
+            return Ok(LogMessageRelay.IconsStorage);
+        }
+
+        public ActionResult GetDescriptions()
+        {
+            return Ok(LogMessageRelay.DescriptionsStorage);
+        }
+
         public ActionResult LogFiles(DateTime? fromDate)
         {
             return Ok(LogMessageRelay.GetLogFiles(fromDate).Select(x => new {

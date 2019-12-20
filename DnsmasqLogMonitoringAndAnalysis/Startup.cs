@@ -105,14 +105,30 @@ namespace DnsmasqLogMonitoringAndAnalysis
             return data.ToArray();
         }
 
-        public static readonly Dictionary<string, string> IconsStorage = GetIcons();
+        public static Dictionary<string, string> IconsStorage {
+            get {
+                var icons = new Dictionary<string, string>();
+
+                if (!Directory.Exists(IconsDirPath))
+                    return icons;
+
+                var files = GetIconFiles();
+
+                foreach (var file in files) {
+                    var contentType = GetMimeType(file.Extension);
+                    var domain = Path.GetFileNameWithoutExtension(file.Name);
+                    var icon = string.Format("data:{0};base64,{1}", contentType,
+                        Convert.ToBase64String(File.ReadAllBytes(file.FullName)));
+                    if (!icons.ContainsKey(domain))
+                        icons.Add(domain, icon);
+                }
+
+                return icons;
+            }
+        }
 
         public static Dictionary<string, string> DescriptionsStorage
-            = GetStorage<Dictionary<string, string>>(DescriptionsFilePath)
-            // if there is no icon associated, then a new description request will be
-            // made each time there is a new DNS query for the particular domain
-            .Where(x => IconsStorage.ContainsKey(x.Key))
-            .ToDictionary(x => x.Key, y => y.Value);
+            = GetStorage<Dictionary<string, string>>(DescriptionsFilePath);
 
         public static Dictionary<string, string> VendorsStorage
             = GetStorage<Dictionary<string, string>>(VendorsFilePath);
@@ -286,28 +302,14 @@ namespace DnsmasqLogMonitoringAndAnalysis
             }
         }
 
-        private static Dictionary<string, string> GetIcons()
+        private static FileInfo[] GetIconFiles()
         {
-            var icons = new Dictionary<string, string>();
-
             if (!Directory.Exists(IconsDirPath))
-                return icons;
+                return Array.Empty<FileInfo>();
 
             var info = new DirectoryInfo(IconsDirPath);
 
-            // only load files that are not too old
-            var files = info.GetFiles();
-
-            foreach (var file in files) {
-                var contentType = GetMimeType(file.Extension);
-                var domain = Path.GetFileNameWithoutExtension(file.Name);
-                var icon = string.Format("data:{0};base64,{1}", contentType,
-                    Convert.ToBase64String(File.ReadAllBytes(file.FullName)));
-                if (!icons.ContainsKey(domain))
-                    icons.Add(domain, icon);
-            }
-
-            return icons;
+            return info.GetFiles();
         }
 
         private static T GetStorage<T>(string filePath)
