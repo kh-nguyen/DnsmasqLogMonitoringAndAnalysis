@@ -1022,10 +1022,10 @@
 
                     date = moment(date.join(' '), 'YYYY MMM D HH:mm:ss');
 
-                    // because of missing year info in the log, we can assume
+                    // because of missing year info in the log, we assume
                     // future date value is for the time of the previous year
-                    if (date > new Date()) {
-                        date = date.subtract(1, 'years');
+                    if (imported && date > new Date()) {
+                        date.subtract(1, 'years');
                     }
 
                     return date;
@@ -1163,7 +1163,7 @@
             function processSavedFiles() {
                 var files = $scope.OldDataFiles;
 
-                if (files === null || files.length <= 0 || $scope.OldDataCancel === true) {
+                if (typeof files === 'undefined' || (files && files.length <= 0) || $scope.OldDataCancel === true) {
                     $scope.$apply(function() {
                         $scope.loading_data = false;
                         $scope.OldDataFileInfo = null;
