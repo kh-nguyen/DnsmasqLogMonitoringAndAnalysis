@@ -328,7 +328,6 @@
                     });
                 },
                 log: function(loggedEvent) {
-                    var dnsmasq = $scope.dnsmasq;
                     var REQUESTOR_MAX_RECORDS = 100;
                     var toBeFilledWithDescription = [];
 
@@ -376,13 +375,13 @@
                         topDomain = {
                             key: topDomainKey,
                             lastRequestTime: loggedEvent.time,
-                            icon: getIconTopDomain(topDomainKey),
                             expand: { hidden: true, sort: { orderBy: 'time', orderReverse: true }, limit: 20 },
                             records: [],
                             totalDomains: 0,
                             totalRequests: 0,
                             categories: []
                         };
+                        assignIconTopDomain(topDomain)
                         client.records.push(topDomain);
                         ++client.totalTopDomains;
                     }
@@ -420,7 +419,6 @@
                         topDomain.lastRequestTime = loggedEvent.time;
                         client.lastRequestTime = loggedEvent.time;
                     }
-                    toBeFilledWithDescription.push(topDomain);
 
                     var resolver = dnsmasq.resolvers.find(function(x) { return x.key === loggedEvent.resolver; });
                     if (typeof resolver === 'undefined') {
@@ -443,7 +441,6 @@
                             categories: categories,
                             totalRequests: 0,
                             lastRequestTime: loggedEvent.time,
-                            icon: getIconTopDomain(topDomainKey),
                             requestors: [],
                             records: [],
                             expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }
@@ -1080,15 +1077,9 @@
                 }
 
                 var domain = requests.pop(); // get the last item in the queue
-                var queue = dnsmasq.descriptions[domain];
-
-                if (!$.isArray(queue)) {
-                    return;
-                }
-
                 var ipAddress = dnsmasq.ipAddresses[domain];
 
-                if (typeof ipAddress === 'undefined' || ipAddress === '0.0.0.0') {
+                if (ipAddress === '0.0.0.0') {
                     processResponse(null);
                     return;
                 }
@@ -1096,9 +1087,9 @@
                 ++dnsmasq.descriptions.processingCount;
 
                 $.get(url, { domain: domain, ipAddress: ipAddress })
-                    .done(processResponse).always(function() {
-                        --dnsmasq.descriptions.processingCount;
-                    });
+                .done(processResponse).always(function() {
+                    --dnsmasq.descriptions.processingCount;
+                });
 
                 function processResponse(data) {
                     var topdomain = getTopDomain(domain);
@@ -1109,7 +1100,34 @@
                         subdomain: getSubDomain(domain, topdomain)
                     }, abstractDescription, data);
 
+                    // the case of requesting for top domain info
+                    if (typeof ipAddress == 'undefined') {
+                        if (typeof data.icon === 'string') {
+                            dnsmasq.icons[data.topdomain] = data.icon;
+
+                            iconTopDomain(dnsmasq.domains.find(function (x) { return x.key === data.topdomain; }));
+
+                            $.each(dnsmasq.queries, function (index, client) {
+                                iconTopDomain(client.records.find(function (x) { return x.key === data.topdomain; }));
+                            });
+
+                            function iconTopDomain(obj) {
+                                if (typeof obj !== 'undefined') {
+                                    obj.icon = data.icon;
+                                }
+                            }
+                        }
+
+                        return;
+                    }
+
+                    var queue = dnsmasq.descriptions[domain];
+
                     dnsmasq.descriptions[domain] = data;
+
+                    if (!$.isArray(queue)) {
+                        return;
+                    }
 
                     fillDescription(queue, data);
                 }
@@ -1123,7 +1141,6 @@
                         dnsmasq.icons[data.domain] = data.icon;
 
                         if (data.subdomain === null || data.subdomain === 'www') {
-                            dnsmasq.icons[data.topdomain] = data.icon;
                             obj.icon = data.icon;
                         }
                     }
@@ -1247,12 +1264,16 @@
                     : null;
             }
 
-            function getIconTopDomain(topdomain) {
-                var icon = dnsmasq.icons[topdomain];
-                if (typeof icon === 'string') {
-                    return icon;
+            function assignIconTopDomain(topdomain) {
+                var key = topdomain.key;
+                var icon = dnsmasq.icons[key];
+                if (typeof icon === 'undefined') {
+                    icon = dnsmasq.icons['www.' + key];
                 }
-                return dnsmasq.icons['www.' + topdomain];
+                if (typeof icon === 'undefined') {
+                    dnsmasq.descriptions.requests.push(key);
+                }
+                topdomain.icon = icon;
             }
         }]);
 

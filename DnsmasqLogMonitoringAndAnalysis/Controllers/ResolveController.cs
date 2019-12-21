@@ -52,6 +52,20 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
         public async Task<ActionResult> Description([FromQuery] DescriptionRequest descriptionRequest)
         {
             try {
+                if (string.IsNullOrEmpty(descriptionRequest.ipAddress)) {
+                    var www = $"www.{descriptionRequest.domain}";
+
+                    LogMessageRelay.DescriptionsStorage.TryGetValue(descriptionRequest.domain, out string description);
+
+                    if (string.IsNullOrEmpty(description) && !descriptionRequest.domain.StartsWith("www."))
+                        LogMessageRelay.DescriptionsStorage.TryGetValue(www, out description);
+
+                    return new JsonResult(new Description {
+                        icon = LogMessageRelay.GetIcon(descriptionRequest.domain) ?? LogMessageRelay.GetIcon(www),
+                        description = description
+                    });
+                }
+
                 ServicePointManager.SecurityProtocol
                     = SecurityProtocolType.Tls
                     | SecurityProtocolType.Tls11
@@ -62,7 +76,7 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                 HttpStatusCode statusCode = HttpStatusCode.OK;
                 HtmlDocument document = new HtmlDocument();
 
-                descriptionRequest.url = string.Format("{0}://{1}", descriptionRequest.protocol, descriptionRequest.ipAddress ?? descriptionRequest.domain);
+                descriptionRequest.url = $"{descriptionRequest.protocol}://{descriptionRequest.ipAddress ?? descriptionRequest.domain}";
                 var request = (HttpWebRequest)WebRequest.Create(descriptionRequest.url);
                 request.Host = descriptionRequest.domain;
                 request.CookieContainer = new CookieContainer();

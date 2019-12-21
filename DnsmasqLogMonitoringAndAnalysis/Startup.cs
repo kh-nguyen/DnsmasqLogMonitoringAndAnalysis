@@ -115,12 +115,10 @@ namespace DnsmasqLogMonitoringAndAnalysis
                 var files = GetIconFiles();
 
                 foreach (var file in files) {
-                    var contentType = GetMimeType(file.Extension);
                     var domain = Path.GetFileNameWithoutExtension(file.Name);
-                    var icon = string.Format("data:{0};base64,{1}", contentType,
-                        Convert.ToBase64String(File.ReadAllBytes(file.FullName)));
+
                     if (!icons.ContainsKey(domain))
-                        icons.Add(domain, icon);
+                        icons.Add(domain, GetIcon(file));
                 }
 
                 return icons;
@@ -310,6 +308,23 @@ namespace DnsmasqLogMonitoringAndAnalysis
             var info = new DirectoryInfo(IconsDirPath);
 
             return info.GetFiles();
+        }
+
+        private static string GetIcon(FileInfo file)
+        {
+            if (file == null)
+                return null;
+
+            var contentType = GetMimeType(file.Extension);
+
+            return string.Format("data:{0};base64,{1}", contentType,
+                Convert.ToBase64String(File.ReadAllBytes(file.FullName)));
+        }
+
+        public static string GetIcon(string domain)
+        {
+            return GetIcon(GetIconFiles().Where(x => Path
+            .GetFileNameWithoutExtension(x.Name) == domain).FirstOrDefault());
         }
 
         private static T GetStorage<T>(string filePath)
