@@ -375,13 +375,13 @@
                         topDomain = {
                             key: topDomainKey,
                             lastRequestTime: loggedEvent.time,
+                            icon: getIcon(topDomainKey),
                             expand: { hidden: true, sort: { orderBy: 'time', orderReverse: true }, limit: 20 },
                             records: [],
                             totalDomains: 0,
                             totalRequests: 0,
                             categories: []
                         };
-                        assignIconTopDomain(topDomain)
                         client.records.push(topDomain);
                         ++client.totalTopDomains;
                     }
@@ -438,6 +438,7 @@
                     if (typeof topDomain === 'undefined') {
                         topDomain = {
                             key: topDomainKey,
+                            icon: getIcon(topDomainKey),
                             categories: categories,
                             totalRequests: 0,
                             lastRequestTime: loggedEvent.time,
@@ -446,6 +447,10 @@
                             expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }
                         };
                         dnsmasq.domains.push(topDomain);
+
+                        if (typeof topDomain.icon === 'undefined' && !(loggedEvent.imported === true)) {
+                            dnsmasq.descriptions.requests.push(topDomainKey);
+                        }
                     }
                     domain = topDomain.records.find(function(x) { return x.key === loggedEvent.domain; });
                     if (typeof domain === 'undefined') {
@@ -582,6 +587,14 @@
                         }
 
                         return true;
+                    }
+
+                    function getIcon(key) {
+                        var icon = dnsmasq.icons[key];
+                        if (typeof icon === 'undefined') {
+                            icon = dnsmasq.icons['www.' + key];
+                        }
+                        return icon;
                     }
                 },
                 dataAdd: function(row) {
@@ -1262,18 +1275,6 @@
                 return domain.length > topDomainKey.length
                     ? domain.substring(0, domain.length - topDomainKey.length - 1)
                     : null;
-            }
-
-            function assignIconTopDomain(topdomain) {
-                var key = topdomain.key;
-                var icon = dnsmasq.icons[key];
-                if (typeof icon === 'undefined') {
-                    icon = dnsmasq.icons['www.' + key];
-                }
-                if (typeof icon === 'undefined') {
-                    dnsmasq.descriptions.requests.push(key);
-                }
-                topdomain.icon = icon;
             }
         }]);
 
