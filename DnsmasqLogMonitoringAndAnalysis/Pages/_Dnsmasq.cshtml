@@ -403,11 +403,23 @@
                                                 </td>
                                                 <td><span ng-bind="topdomain.totalDomains | number" class="update-item value-{{topdomain.totalDomains}}"></span></td>
                                                 <td><span ng-bind="topdomain.totalRequests | number" class="update-item value-{{topdomain.totalRequests}}"></span></td>
-                                                <td title="{{topdomain.lastRequestTime}}" am-time-ago="topdomain.lastRequestTime"></td>
+                                                <td>
+                                                    <div ng-repeat="record in topdomain.records | orderBy:'time':true | limitTo:1">
+                                                        <span ng-if="record.subdomain" class="text-primary" ng-bind="record.subdomain" title="{{record.domain}}"></span>
+                                                        <span title="{{record.time}}" am-time-ago="record.time"></span>
+                                                    </div>
+                                                </td>
                                                 <td class="description" ng-if="!dnsmasq.settings.disable_website_description">
-                                                    <div ng-if="topdomain.description.description || topdomain.description.title || topdomain.description.icon" title="{{topdomain.description.bodyText}}">
+                                                    <div ng-if="topdomain.description" title="{{topdomain.description.bodyText}}">
                                                         <img ng-if="topdomain.description.icon" class="icon" ng-src="{{topdomain.description.icon}}" alt="" />
-                                                        <small ng-bind-html="topdomain.description.description ? topdomain.description.description : topdomain.description.title | html"></small>
+                                                        <span ng-if="topdomain.description.subdomain" class="text-primary" ng-bind="topdomain.description.subdomain" title="{{topdomain.description.domain}}"></span>
+                                                        <span ng-if="topdomain.description.description || topdomain.description.title">
+                                                            <small ng-bind-html="topdomain.description.description ? topdomain.description.description : topdomain.description.title | html"></small>
+                                                        </span>
+                                                    </div>
+                                                    <div ng-if="!topdomain.description && topdomain.info.info">
+                                                        <img ng-if="topdomain.info.icon" class="icon" ng-src="{{topdomain.info.icon}}" alt="" />
+                                                        <small ng-bind="topdomain.info.info | html"></small>
                                                     </div>
                                                 </td>
                                             </tr>
