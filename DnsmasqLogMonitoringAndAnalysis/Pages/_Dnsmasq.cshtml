@@ -114,6 +114,7 @@
                     <div><input type="checkbox" ng-model="dnsmasq.settings.show_raw_data_when_import" />&nbsp;Show raw data when importing log files</div>
                     <div><input type="checkbox" ng-model="dnsmasq.settings.show_raw_data_dnsmasq_only" />&nbsp;Show only dnsmasq log messages in the raw data table</div>
                     <div><input type="checkbox" ng-model="dnsmasq.settings.reset_data_when_load_log_files" />&nbsp;Clear current data when importing log files</div>
+                    <div><input type="checkbox" ng-model="dnsmasq.settings.retrieve_saved_data_when_load_log_files" />&nbsp;Retrieve all saved <abbr title="website icons and descriptions">data</abbr> when importing log files</div>
                     <div title="Usefully to keep only main domains (www.website.com or website.com) instead of the ones automatically visited by a program on the client's device"><input type="checkbox" ng-model="dnsmasq.settings.bare_or_www_only" />&nbsp;Keep bare or WWW domains only</div>
                 </div>
             </fieldset>
@@ -129,19 +130,20 @@
             <h6>
                 <span class="glyphicon glyphicon-warning-sign"></span>
                 Loading
+                <span ng-if="loading_data_on_server">all icons and descriptions on the server...</span>
                 <span ng-if="OldDataFileInfo">
                     <span ng-bind="OldDataFileInfo.name" class="text-primary"></span>
                     <span ng-bind="OldDataFileInfo.length | formatBytes"></span>
                 </span>
-                <span ng-if="OldDataLoadedCount != OldDataCount">
+                <span ng-show="OldDataLoadedCount != OldDataCount">
                     <span ng-bind="OldDataLoadedCount | number"></span>
                     of
                     <span ng-bind="OldDataCount | number"></span>
                     lines...
+                    <button class="btn btn-default btn-sm" ng-click="OldDataCancel = true" title="Cancel loading data process">
+                        <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
+                    </button>
                 </span>
-                <button class="btn btn-default btn-sm" ng-click="OldDataCancel = true" title="Cancel loading data process">
-                    <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
-                </button>
             </h6>
         </div>
 
@@ -182,7 +184,13 @@
                                 </td>
                                 <td><span ng-bind="domain.requestors.length | number"></span></td>
                                 <td><span ng-bind="domain.totalRequests | number" class="update-item value-{{domain.totalRequests}}"></span></td>
-                                <td><span ng-bind="domain.lastRequestor.client.hostname ? domain.lastRequestor.client.hostname : domain.lastRequestor.client.key" title="{{domain.lastRequestor.client.key}}"></span>: <span title="{{domain.lastRequestTime}}" am-time-ago="domain.lastRequestTime"></span></td>
+                                <td>
+                                    <div ng-repeat="record in domain.records | orderBy:'lastRequestTime':true | limitTo:1">
+                                        <span ng-bind="record.lastRequestor.client.hostname ? record.lastRequestor.client.hostname : record.lastRequestor.client.key" title="{{record.lastRequestor.client.key}}"></span>
+                                        <span ng-if="record.subdomain" class="text-primary" ng-bind="record.subdomain" title="{{record.key}}"></span>
+                                        <span title="{{record.lastRequestTime}}" am-time-ago="record.lastRequestTime"></span>
+                                    </div>
+                                </td>
                                 <td class="description" ng-if="!dnsmasq.settings.disable_website_description">
                                     <div ng-if="domain.description" title="{{domain.description.bodyText}}">
                                         <img ng-if="domain.description.icon" class="icon" ng-src="{{domain.description.icon}}" alt="" />
@@ -190,6 +198,10 @@
                                         <span ng-if="domain.description.description || domain.description.title">
                                             <small ng-bind-html="domain.description.description ? domain.description.description : domain.description.title | html"></small>
                                         </span>
+                                    </div>
+                                    <div ng-if="!domain.description && domain.info">
+                                        <img ng-if="domain.icon" class="icon" ng-src="{{domain.icon}}" alt="" />
+                                        <small ng-bind="domain.info | html"></small>
                                     </div>
                                 </td>
                             </tr>
@@ -286,7 +298,7 @@
                                             <tr ng-repeat-start="topdomain in category.records | orderBy:category.expand.sort.orderBy:category.expand.sort.orderReverse | limitTo: category.expand.limit:((category.expand.page - 1) * category.expand.limit)">
                                                 <td>
                                                     <span toggle-hidden options="topdomain.expand"></span>
-                                                    <img ng-if="topdomain.icon || topdomain.description.icon" class="icon" ng-src="{{topdomain.icon ? topdomain.icon : topdomain.description.icon}}" alt="" />
+                                                    <img ng-if="topdomain.info.icon || topdomain.info.description.icon" class="icon" ng-src="{{topdomain.info.icon ? topdomain.info.icon : topdomain.info.description.icon}}" alt="" />
                                                     <span ng-bind="topdomain.key"></span>
                                                 </td>
                                                 <td><span ng-bind="topdomain.requestors.length | number" class="update-item value-{{topdomain.requestors.length}}"></span></td>
@@ -319,12 +331,12 @@
                         <caption>
                             <span toggle-hidden options="dnsmasq.queriesOptions.expand"></span>
                             Clients: <span ng-bind="dnsmasq.queries | keylength | number"></span>
-                                     <span class="pull-right">
-                                         <a class="btn btn-default btn-sm" title="Request to resolve the hostnames of the clients" ng-click="dnsmasq.queriesOptions.resolveNames()"><span class="glyphicon glyphicon-refresh" aria-hidden="true"></span></a>
-                                         <a class="btn btn-default btn-sm" title="Expand All" ng-click="dnsmasq.queriesOptions.expand.all = !dnsmasq.queriesOptions.expand.all; dnsmasq.setHidden(dnsmasq.queries, !dnsmasq.queriesOptions.expand.all)"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.expand.all ? 'glyphicon-minus' : 'glyphicon-plus'" aria-hidden="true"></span></a>
-                                         <a class="btn btn-default btn-sm" title="Search" ng-click="dnsmasq.queriesOptions.searchShow = !dnsmasq.queriesOptions.searchShow"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
-                                         <input placeholder="search" ng-show="dnsmasq.queriesOptions.searchShow" ng-model="dnsmasq.queriesOptions.search.key" />
-                                     </span>
+                            <span class="pull-right">
+                                <a class="btn btn-default btn-sm" title="Request to resolve the hostnames of the clients" ng-click="dnsmasq.queriesOptions.resolveNames()"><span class="glyphicon glyphicon-refresh" aria-hidden="true"></span></a>
+                                <a class="btn btn-default btn-sm" title="Expand All" ng-click="dnsmasq.queriesOptions.expand.all = !dnsmasq.queriesOptions.expand.all; dnsmasq.setHidden(dnsmasq.queries, !dnsmasq.queriesOptions.expand.all)"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.expand.all ? 'glyphicon-minus' : 'glyphicon-plus'" aria-hidden="true"></span></a>
+                                <a class="btn btn-default btn-sm" title="Search" ng-click="dnsmasq.queriesOptions.searchShow = !dnsmasq.queriesOptions.searchShow"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
+                                <input placeholder="search" ng-show="dnsmasq.queriesOptions.searchShow" ng-model="dnsmasq.queriesOptions.search.key" />
+                            </span>
                         </caption>
                         <thead ng-if="!dnsmasq.queriesOptions.expand.hidden">
                             <tr class="info">
@@ -358,7 +370,7 @@
                                 <td><span ng-bind="node.totalRequests | number" class="update-item value-{{node.totalRequests}}"></span></td>
                                 <td>
                                     <div ng-repeat="topdomain in node.records | orderBy:'lastRequestTime':true | limitTo:5">
-                                        <img ng-if="topdomain.icon || topdomain.description.icon" class="icon" ng-src="{{topdomain.icon ? topdomain.icon : topdomain.description.icon}}" alt="" />
+                                        <img ng-if="topdomain.info.icon || topdomain.info.description.icon" class="icon" ng-src="{{topdomain.info.icon ? topdomain.info.icon : topdomain.info.description.icon}}" alt="" />
                                         <span class="text-primary" ng-bind="topdomain.key"></span>
                                         <span title="{{topdomain.lastRequestTime}}" am-time-ago="topdomain.lastRequestTime"></span>
                                     </div>
@@ -381,7 +393,7 @@
                                             <tr ng-repeat-start="topdomain in node.records | filter:dnsmasq.queriesOptions.search | orderBy:node.expand.sort.orderBy:node.expand.sort.orderReverse | limitTo: node.expand.limit:((node.expand.page - 1) * node.expand.limit)">
                                                 <td>
                                                     <span toggle-hidden options="topdomain.expand"></span>
-                                                    <img ng-if="topdomain.icon" class="icon" ng-src="{{topdomain.icon}}" alt="" />
+                                                    <img ng-if="topdomain.info.icon || topdomain.info.description.icon" class="icon" ng-src="{{topdomain.info.icon ? topdomain.info.icon : topdomain.info.description.icon}}" alt="" />
                                                     <span ng-bind="topdomain.key"></span>
                                                 </td>
                                                 <td>

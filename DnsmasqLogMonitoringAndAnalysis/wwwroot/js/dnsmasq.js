@@ -311,6 +311,7 @@
                     bare_or_www_only: false,
                     disable_website_description: false,
                     reset_data_when_load_log_files: true,
+                    retrieve_saved_data_when_load_log_files: true,
                     show_raw_data_when_import: false,
                     show_raw_data_dnsmasq_only: true
                 },
@@ -351,6 +352,9 @@
                         }
                     }
 
+                    var topDomainKey = getTopDomain(loggedEvent.domain);
+                    var subDomainKey = getSubDomain(loggedEvent.domain, topDomainKey);
+
                     var client = dnsmasq.queries.find(function(x) { return x.key === loggedEvent.requestor; });
                     if (typeof client === 'undefined') {
                         client = {
@@ -368,58 +372,6 @@
                         $scope.networkResolve(loggedEvent.requestor, client);
                     }
 
-                    var topDomainKey = getTopDomain(loggedEvent.domain);
-                    var subDomainKey = getSubDomain(loggedEvent.domain, topDomainKey);
-                    var topDomain = client.records.find(function(x) { return x.key === topDomainKey; });
-                    if (typeof topDomain === 'undefined') {
-                        topDomain = {
-                            key: topDomainKey,
-                            lastRequestTime: loggedEvent.time,
-                            icon: getIcon(topDomainKey),
-                            expand: { hidden: true, sort: { orderBy: 'time', orderReverse: true }, limit: 20 },
-                            records: [],
-                            totalDomains: 0,
-                            totalRequests: 0,
-                            categories: []
-                        };
-                        client.records.push(topDomain);
-                        ++client.totalTopDomains;
-                    }
-
-                    var domain = topDomain.records.find(function(x) { return x.domain === loggedEvent.domain; });
-                    if (typeof domain === 'undefined') {
-                        domain = { totalRequests: 0, subdomain: subDomainKey, icon: dnsmasq.icons[loggedEvent.domain] };
-                        topDomain.records.push(domain);
-                        ++topDomain.totalDomains;
-                        ++client.totalDomains;
-                    }
-                    $.extend(domain, loggedEvent);
-                    if (categoryObj !== false) {
-                        domain.category = categoryObj;
-
-                        var category = topDomain.categories.find(function(x) { return x === domain.category; });
-                        if (typeof category === 'undefined') {
-                            topDomain.categories.push(categoryObj);
-
-                            // add category to the requester object if not already added
-                            category = client.categories.find(function(x) { return x === domain.category; });
-                            if (typeof category === 'undefined') {
-                                client.categories.push(domain.category);
-                            }
-                        }
-
-                        if (categoryObj.requestors.indexOf(client) === -1) {
-                            categoryObj.requestors.push(client);
-                        }
-                    }
-                    ++domain.totalRequests;
-                    ++topDomain.totalRequests;
-                    ++client.totalRequests;
-                    if (client.lastRequestTime <= loggedEvent.time) {
-                        topDomain.lastRequestTime = loggedEvent.time;
-                        client.lastRequestTime = loggedEvent.time;
-                    }
-
                     var resolver = dnsmasq.resolvers.find(function(x) { return x.key === loggedEvent.resolver; });
                     if (typeof resolver === 'undefined') {
                         resolver = {
@@ -433,13 +385,13 @@
                     ++resolver.totalRequests;
                     ++dnsmasq.resolversOptions.sum.totalRequests;
 
-                    var categories = topDomain.categories;
-                    topDomain = dnsmasq.domains.find(function(x) { return x.key === topDomainKey; });
+                    var topDomain = dnsmasq.domains.find(function(x) { return x.key === topDomainKey; });
                     if (typeof topDomain === 'undefined') {
                         topDomain = {
                             key: topDomainKey,
                             icon: getIcon(topDomainKey),
-                            categories: categories,
+                            info: getInfo(topDomainKey),
+                            categories: [],
                             totalRequests: 0,
                             lastRequestTime: loggedEvent.time,
                             requestors: [],
@@ -448,11 +400,11 @@
                         };
                         dnsmasq.domains.push(topDomain);
 
-                        if (typeof topDomain.icon === 'undefined' && !(loggedEvent.imported === true)) {
-                            dnsmasq.descriptions.requests.push(topDomainKey);
+                        if (typeof topDomain.icon === 'undefined' && (!loggedEvent.imported || (loggedEvent.imported && !dnsmasq.settings.retrieve_saved_data_when_load_log_files))) {
+                            dnsmasq.descriptions.requests.push({ domain: topDomainKey });
                         }
                     }
-                    domain = topDomain.records.find(function(x) { return x.key === loggedEvent.domain; });
+                    var domain = topDomain.records.find(function(x) { return x.key === loggedEvent.domain; });
                     if (typeof domain === 'undefined') {
                         domain = {
                             key: loggedEvent.domain,
@@ -487,9 +439,10 @@
                         var catTopDomain = categoryObj.records.find(function(x) { return x.key === topDomainKey; });
                         if (typeof catTopDomain === 'undefined') {
                             catTopDomain = {
+                                key: topDomainKey,
+                                info: topDomain,
                                 records: [],
                                 requestors: [],
-                                key: topDomainKey,
                                 totalRequests: 0,
                                 lastRequestTime: loggedEvent.time,
                                 lastRequestor: requestor,
@@ -509,9 +462,11 @@
                             catTopDomain.requestors.push(client);
                         }
 
-                        toBeFilledWithDescription.push(catTopDomain);
-
                         ++catTopDomain.totalRequests;
+
+                        if (topDomain.categories.indexOf(categoryObj) === -1) {
+                            topDomain.categories.push(categoryObj);
+                        }
 
                         domain.category = categoryObj;
                     }
@@ -539,6 +494,59 @@
                         toBeFilledWithDescription.push(topDomain);
                     }
                     toBeFilledWithDescription.push(domain);
+
+                    // client info section
+                    //-----------------------------------------------------
+                    var clientTopDomain = client.records.find(function (x) { return x.key === topDomainKey; });
+                    if (typeof clientTopDomain === 'undefined') {
+                        clientTopDomain = {
+                            key: topDomainKey,
+                            info: topDomain,
+                            lastRequestTime: loggedEvent.time,
+                            expand: { hidden: true, sort: { orderBy: 'time', orderReverse: true }, limit: 20 },
+                            records: [],
+                            totalDomains: 0,
+                            totalRequests: 0,
+                            categories: []
+                        };
+                        client.records.push(clientTopDomain);
+                        ++client.totalTopDomains;
+                    }
+
+                    var clientDomain = clientTopDomain.records.find(function (x) { return x.domain === loggedEvent.domain; });
+                    if (typeof clientDomain === 'undefined') {
+                        clientDomain = { totalRequests: 0, subdomain: subDomainKey };
+                        clientTopDomain.records.push(clientDomain);
+                        ++clientTopDomain.totalDomains;
+                        ++client.totalDomains;
+                    }
+                    $.extend(clientDomain, loggedEvent);
+                    if (categoryObj !== false) {
+                        clientDomain.category = categoryObj;
+
+                        var category = clientTopDomain.categories.find(function (x) { return x === clientDomain.category; });
+                        if (typeof category === 'undefined') {
+                            clientTopDomain.categories.push(categoryObj);
+
+                            // add category to the requester object if not already added
+                            category = client.categories.find(function (x) { return x === clientDomain.category; });
+                            if (typeof category === 'undefined') {
+                                client.categories.push(clientDomain.category);
+                            }
+                        }
+
+                        if (categoryObj.requestors.indexOf(client) === -1) {
+                            categoryObj.requestors.push(client);
+                        }
+                    }
+                    ++clientDomain.totalRequests;
+                    ++clientTopDomain.totalRequests;
+                    ++client.totalRequests;
+                    if (client.lastRequestTime <= loggedEvent.time) {
+                        clientTopDomain.lastRequestTime = loggedEvent.time;
+                        client.lastRequestTime = loggedEvent.time;
+                    }
+                    //-----------------------------------------------------
 
                     getDescription();
 
@@ -596,6 +604,17 @@
                         }
                         return icon;
                     }
+
+                    function getInfo(key) {
+                        var info = dnsmasq.descriptions[key];
+                        if (typeof info === 'undefined') {
+                            info = dnsmasq.descriptions['www.' + key];
+                        }
+                        if (typeof info === 'object') {
+                            return info.description;
+                        }
+                        return info;
+                    }
                 },
                 dataAdd: function(row) {
                     var data = dnsmasq.data;
@@ -638,10 +657,6 @@
                     $this.initializeLoadData(process);
 
                     function process() {
-                        if ($this.icons.loaded !== true || $this.descriptions.loaded !== true) {
-                            return;
-                        }
-
                         if ($this.settings.reset_data_when_load_log_files === true) {
                             dnsmasq.clearData();
                         }
@@ -656,10 +671,6 @@
                     $this.initializeLoadData(process);
 
                     function process() {
-                        if ($this.icons.loaded !== true || $this.descriptions.loaded !== true) {
-                            return;
-                        }
-
                         var parameters = {};
 
                         if (typeof fromDate !== 'undefined') {
@@ -689,12 +700,29 @@
                 initializeLoadData: function (callback) {
                     var $this = this;
 
+                    $scope.loading_data = true;
+
+                    // minimize all the tables to speed up loading
+                    dnsmasq.dataOptions.expand.hidden = true;
+                    dnsmasq.categoriesOptions.expand.hidden = true;
+                    dnsmasq.queriesOptions.expand.hidden = true;
+                    dnsmasq.domainsOptions.expand.hidden = true;
+                    dnsmasq.resolversOptions.expand.hidden = true;
+
+                    if ($this.settings.retrieve_saved_data_when_load_log_files === false) {
+                        callback();
+
+                        return;
+                    }
+
                     // load all icons set if not done yet
                     if ($this.icons.loaded !== true) {
                         $.get($this.settings.GetIconsUrl).done(function (data) {
                             $.extend($this.icons, data);
                             $this.icons.loaded = true;
-                            callback();
+                            if (isDoneLoading()) {
+                                callback();
+                            }
                         });
                     }
 
@@ -703,11 +731,21 @@
                         $.get($this.settings.GetDescriptionsUrl).done(function (data) {
                             $.extend($this.descriptions, data);
                             $this.descriptions.loaded = true;
-                            callback();
+                            if (isDoneLoading()) {
+                                callback();
+                            }
                         });
                     }
 
-                    callback();
+                    if (isDoneLoading()) {
+                        callback();
+                    }
+
+                    function isDoneLoading() {
+                        $scope.loading_data_on_server = $this.icons.loaded !== true || $this.descriptions.loaded !== true;
+
+                        return !$scope.loading_data_on_server;
+                    }
                 },
                 saveData: function() {
                     var blob = new Blob([JSON.stringify(dnsmasq)], { type: 'application/json' });
@@ -1081,30 +1119,40 @@
                 var requests = dnsmasq.descriptions.requests;
                 var url = dnsmasq.settings.GetDescriptionUrl;
 
-                if (requests.length <= 0) {
-                    return;
-                }
-
                 if (typeof url === 'undefined') {
                     return;
                 }
 
-                var domain = requests.pop(); // get the last item in the queue
-                var ipAddress = dnsmasq.ipAddresses[domain];
-
-                if (ipAddress === '0.0.0.0') {
-                    processResponse(null);
+                if (requests.length <= 0) {
                     return;
+                }
+
+                var request = requests.pop(); // get the last item in the queue
+
+                if (typeof request === 'undefined') {
+                    return;
+                }
+
+                if (typeof request === 'string') {
+                    var ipAddress = dnsmasq.ipAddresses[request];
+
+                    if (ipAddress === '0.0.0.0') {
+                        processResponse(null);
+                        return;
+                    }
+
+                    request = { domain: request, ipAddress: ipAddress };
                 }
 
                 ++dnsmasq.descriptions.processingCount;
 
-                $.get(url, { domain: domain, ipAddress: ipAddress })
+                $.get(url, request)
                 .done(processResponse).always(function() {
                     --dnsmasq.descriptions.processingCount;
                 });
 
                 function processResponse(data) {
+                    var domain = request.domain;
                     var topdomain = getTopDomain(domain);
 
                     data = $.extend({
@@ -1114,24 +1162,18 @@
                     }, abstractDescription, data);
 
                     // the case of requesting for top domain info
-                    if (typeof ipAddress == 'undefined') {
-                        if (typeof data.icon === 'string') {
-                            dnsmasq.icons[data.topdomain] = data.icon;
+                    if (data.subdomain === null || data.subdomain === 'www') {
+                        var top = dnsmasq.domains.find(function (x) { return x.key === data.topdomain; });
 
-                            iconTopDomain(dnsmasq.domains.find(function (x) { return x.key === data.topdomain; }));
+                        if (typeof top !== 'undefined') {
+                            if (typeof data.icon === 'string') {
+                                top.icon = data.icon;
+                            }
 
-                            $.each(dnsmasq.queries, function (index, client) {
-                                iconTopDomain(client.records.find(function (x) { return x.key === data.topdomain; }));
-                            });
-
-                            function iconTopDomain(obj) {
-                                if (typeof obj !== 'undefined') {
-                                    obj.icon = data.icon;
-                                }
+                            if (typeof data.description === 'string') {
+                                top.info = data.description;
                             }
                         }
-
-                        return;
                     }
 
                     var queue = dnsmasq.descriptions[domain];
@@ -1147,8 +1189,8 @@
             }
 
             function fillDescription(queue, data) {
-                $.each(queue, function(index, obj) {
-                    obj.description = data;
+                $.each(queue, function (index, obj) {
+                    obj.description = data.hasDescription() ? data : null;
 
                     if (typeof data.icon === 'string') {
                         dnsmasq.icons[data.domain] = data.icon;
