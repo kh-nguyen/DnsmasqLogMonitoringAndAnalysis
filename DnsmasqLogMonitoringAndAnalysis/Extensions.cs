@@ -29,7 +29,7 @@ public static partial class Extensions
                 var text = (HtmlAgilityPack.HtmlTextNode)node;
                 Process(builder, ref state, HtmlAgilityPack.HtmlEntity.DeEntitize(text.Text).ToCharArray());
             }
-            else {
+            else if (node != null) {
                 var tag = node.Name.ToLower();
 
                 if (tag == "br") {

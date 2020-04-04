@@ -52,6 +52,8 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
         public async Task<ActionResult> Description([FromQuery] DescriptionRequest descriptionRequest)
         {
             try {
+                // if there is no IP address info in the request, then returns
+                // the description stored in the database if there is one
                 if (string.IsNullOrEmpty(descriptionRequest.ipAddress)) {
                     var www = $"www.{descriptionRequest.domain}";
 
@@ -71,50 +73,97 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                     | SecurityProtocolType.Tls11
                     | SecurityProtocolType.Tls12;
 
-                ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
+                ServicePointManager.ServerCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true;
 
-                HttpStatusCode statusCode = HttpStatusCode.OK;
-                HtmlDocument document = new HtmlDocument();
-
-                descriptionRequest.url = $"{descriptionRequest.protocol}://{descriptionRequest.ipAddress ?? descriptionRequest.domain}";
-                var request = (HttpWebRequest)WebRequest.Create(descriptionRequest.url);
-                request.Host = descriptionRequest.domain;
-                request.CookieContainer = new CookieContainer();
-                request.ContentType = "text/html; charset=utf-8";
-                request.Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3";
-                request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36";
-                try {
-                    using var response = (HttpWebResponse)await request.GetResponseAsync();
-
-                    statusCode = response.StatusCode;
-
-                    if (statusCode == HttpStatusCode.OK) {
-                        var encoding = GetEncoding(response);
-                        using var responseStream = response.GetResponseStream();
-                        using var reader = new StreamReader(responseStream, encoding);
-                        document.LoadHtml(reader.ReadToEnd());
-                    }
-                }
-                catch (WebException we) {
-                    logMessageRelay.SendMessage($"{descriptionRequest.domain} => {we.Message}");
-                    statusCode = ((HttpWebResponse)we.Response).StatusCode;
-                }
-
-                if (statusCode == HttpStatusCode.NotFound && descriptionRequest.protocol != "http") {
-                    descriptionRequest.protocol = "http";
-                    return await Description(descriptionRequest);
-                }
-
-                if (statusCode != HttpStatusCode.OK)
-                    return Content(null);
-
-                return await Description(document, descriptionRequest);
+                return await Description(new Uri(descriptionRequest.url), descriptionRequest);
             }
             catch (Exception ex) {
                 logMessageRelay.SendMessage($"{descriptionRequest.domain} => {ex.Message}");
             }
 
             return Content(null);
+        }
+
+        private HttpWebRequest GetHttpWebRequest(Uri uri, DescriptionRequest descriptionRequest)
+        {
+            bool hasIpAddress = uri.Host == descriptionRequest.domain;
+
+            // Note: may leak DNS requests if the domain name in the
+            // uri is not the same in the descriptionRequest
+            if (hasIpAddress)
+                uri = new UriBuilder(uri) { Host = descriptionRequest.ipAddress }.Uri;
+
+            var request = (HttpWebRequest)WebRequest.Create(uri);
+            request.CookieContainer = new CookieContainer();
+            request.ContentType = "text/html; charset=utf-8";
+            request.Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3";
+            request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36";
+            request.ServerCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true;
+
+            if (hasIpAddress)
+                request.Host = descriptionRequest.domain;
+
+            return request;
+        }
+
+        private async Task<ActionResult> Description(Uri uri, DescriptionRequest descriptionRequest)
+        {
+            HttpStatusCode statusCode = HttpStatusCode.Unused;
+            HtmlDocument document = new HtmlDocument();
+
+            var request = GetHttpWebRequest(uri, descriptionRequest);
+
+            try {
+                using var response = (HttpWebResponse)await request.GetResponseAsync();
+
+                statusCode = response.StatusCode;
+
+                if (statusCode == HttpStatusCode.OK) {
+                    var encoding = GetEncoding(response);
+                    using var responseStream = response.GetResponseStream();
+                    using var reader = new StreamReader(responseStream, encoding);
+                    document.LoadHtml(reader.ReadToEnd());
+                }
+            }
+            catch (WebException we) {
+                logMessageRelay.SendMessage($"{descriptionRequest.domain} => {we.Message}");
+
+                if (we.Response == null)
+                    throw;
+
+                var redirectUrl = GetRedirectUrl(we);
+
+                if (!string.IsNullOrEmpty(redirectUrl))
+                    return await Description(new Uri(redirectUrl), descriptionRequest);
+            }
+
+            if (statusCode == HttpStatusCode.NotFound && descriptionRequest.protocol != "http") {
+                descriptionRequest.SetProtocol("http");
+                return await Description(descriptionRequest);
+            }
+
+            if (statusCode != HttpStatusCode.OK)
+                return Content(null);
+
+            return await Description(document, descriptionRequest);
+        }
+
+        private string GetRedirectUrl(WebException we)
+        {
+            var response = ((HttpWebResponse)we.Response);
+            var statusCode = response.StatusCode;
+
+            // handle web redirect where the redirected url is stored in the headers
+            if ((int)statusCode >= 300 && (int)statusCode <= 399) {
+                var strLocation = response.Headers["Location"];
+
+                if (string.IsNullOrEmpty(strLocation))
+                    throw we;
+
+                return strLocation;
+            }
+
+            return null;
         }
 
         private Encoding GetEncoding(HttpWebResponse response)
@@ -188,16 +237,9 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
             return new JsonResult(result);
         }
 
-        private async Task<string> DownloadIcon(Uri url, DescriptionRequest descriptionRequest)
+        private async Task<string> DownloadIcon(Uri uri, DescriptionRequest descriptionRequest)
         {
-            if (url.Host == descriptionRequest.domain)
-                url = new UriBuilder(url) { Host = descriptionRequest.ipAddress }.Uri;
-
-            var request = (HttpWebRequest)WebRequest.Create(url);
-
-            // note: if the url contains the hostname then it may leak DNS requests from the web server
-            if (request.Host.Split(".").Length == 4) // check if it is an IP
-                request.Host = descriptionRequest.domain;
+            var request = GetHttpWebRequest(uri, descriptionRequest);
 
             try {
                 using var response = (HttpWebResponse)await request.GetResponseAsync();
@@ -219,8 +261,17 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                     }
                 }
             }
-            catch (WebException ex) {
-                logMessageRelay.SendMessage($"{url} => {ex.Message}");
+            catch (WebException we) {
+                logMessageRelay.SendMessage($"{uri} => {we.Message}");
+
+                if (we.Response == null)
+                    throw;
+
+                var redirectUrl = GetRedirectUrl(we);
+
+                if (!string.IsNullOrEmpty(redirectUrl)) {
+                    return await DownloadIcon(new Uri(redirectUrl), descriptionRequest);
+                }
             }
 
             return null;
@@ -291,8 +342,14 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
     {
         public string domain { get; set; }
         public string ipAddress { get; set; }
-        public string protocol { get; set; } = "https";
-        public string url { get; set; }
+        public string protocol { get; private set; } = "https";
+        public string path { get; set; }
+        public string url { get { return $"{protocol}://{domain}{path}";  } }
+
+        public void SetProtocol(string protocol)
+        {
+            this.protocol = protocol;
+        }
 
         public string GetBaseUrl()
         {
