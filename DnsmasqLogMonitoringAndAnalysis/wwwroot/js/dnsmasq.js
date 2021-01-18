@@ -3,44 +3,85 @@
 
     System.angular.controller('DnsmasqController',
     ['$scope', '$element', '$http', '$timeout', function($scope, $element, $http, $timeout) {
-            var controller = $($element);
-            var model = controller.data('model');
-            $.extend($scope, model);
+        var controller = $($element);
+        var model = controller.data('model');
+        $.extend($scope, model);
 
-            var abstractIgnore = {
-                add: function() {
-                    var input = this.input;
+        var abstractIgnore = {
+            add: function() {
+                var input = this.input;
 
-                    if (input === null) {
-                        return;
-                    }
-
-                    input = $.trim(input);
-
-                    if (!this.data.find(function(x) { return x === input; })) {
-                        this.data.push(input);
-                    }
-
-                    this.input = null;
-                },
-                remove: function(value) {
-                    this.data.splice(this.data.indexOf(value), 1);
+                if (input === null) {
+                    return;
                 }
-            };
 
-            var abstractDescription = {
-                hasDescription: function() {
-                    return (this.description && this.description.length > 1) ||
-                        (this.title && this.title.length > 1) ||
-                        (this.icon && this.icon.length > 1);
+                input = $.trim(input);
+
+                if (!this.data.find(function(x) { return x === input; })) {
+                    this.data.push(input);
                 }
-            };
 
-            var dnsmasq = $scope.dnsmasq = {};
+                this.input = null;
+            },
+            remove: function(value) {
+                this.data.splice(this.data.indexOf(value), 1);
+            }
+        };
+
+        var abstractDescription = {
+            hasDescription: function() {
+                return (this.description && this.description.length > 1) ||
+                    (this.title && this.title.length > 1) ||
+                    (this.icon && this.icon.length > 1);
+            }
+    };
+
+        var dnsmasqDefaultSourceName = 'default';
+        var dnsmasqBase = {
+            sourceName: dnsmasqDefaultSourceName,
+            title: 'Dnsmasq Log Real-Time Monitoring And Analysis',
+            limits: [5, 10, 20, 50, 100, 200, 500, 1000]
+        };
+
+        $scope.selectedSourceIndex = 0;
+        $scope.sources = [createDnsmasq(dnsmasqBase)];
+
+        $(document).on("dnsmasq", function (event, line, loggedEvent) {
+            if (typeof loggedEvent.source === 'undefined') {
+                sendToAllSources(line);
+            } else {
+                // get dnsmasq object
+                var dnsmasq = $scope.sources[0];
+                if (dnsmasq.sourceName === dnsmasqDefaultSourceName) {
+                    dnsmasq.sourceName = loggedEvent.source;
+                } else {
+                    dnsmasq = $scope.sources.find(o => o.sourceName === loggedEvent.source);
+
+                    if (typeof dnsmasq === 'undefined') {
+                        dnsmasq = createDnsmasq(dnsmasqBase);
+                        dnsmasq.sourceName = loggedEvent.source;
+                        $scope.sources.push(dnsmasq);
+                    }
+                }
+
+                dnsmasq.processDnsmasq(event, line, loggedEvent.imported);
+            }
+        });
+
+        function sendToAllSources(message) {
+            $.each($scope.sources, function (index, dnsmasq) {
+                dnsmasq.dataAdd({
+                    time: new Date(),
+                    message: message
+                });
+            });
+        }
+
+        function createDnsmasq(dnsmasqBase) {
+            var dnsmasq = {};
+
             $.extend(true, dnsmasq, {
-                title: 'Dnsmasq Log Real-Time Monitoring And Analysis',
                 startTime: new Date(),
-                limits: [5, 10, 20, 50, 100, 200, 500, 1000],
                 ignored: $.extend({
                     data: ['0.0.0.0'] // network nodes to be ignored
                 }, abstractIgnore),
@@ -54,7 +95,7 @@
                     requests: [],
                     processingCount: 0,
                     expand: { hidden: true, limit: 10 },
-                    add: function() {
+                    add: function () {
                         var input = this.input;
 
                         if (input === null) {
@@ -63,13 +104,13 @@
 
                         input = $.trim(input);
 
-                        if (!this.requests.find(function(x) { return x === input; })) {
+                        if (!this.requests.find(function (x) { return x === input; })) {
                             this.requests.push(input);
                         }
 
                         this.input = null;
                     },
-                    clear: function() {
+                    clear: function () {
                         var requests = this.requests;
 
                         while (requests.length > 0) {
@@ -110,14 +151,14 @@
                         data: [] // categories to be ignored
                     }, abstractIgnore),
                     expand: { hidden: true, sort: { orderBy: 'name', orderReverse: false } },
-                    resetCounter: function() {
-                        $.each(dnsmasq.categories, function(index, value) {
+                    resetCounter: function () {
+                        $.each(dnsmasq.categories, function (index, value) {
                             value.hits = 0;
                             value.records = [];
                             value.requestors = [];
                         });
                     },
-                    load: function() {
+                    load: function () {
                         var options = this;
 
                         loadDefaultProperties();
@@ -127,7 +168,7 @@
                         setInterval(options.loadCategories, 1 * 24 * 60 * 60 * 1000);
 
                         function loadDefaultProperties() {
-                            $.each(dnsmasq.categories, function(index, value) {
+                            $.each(dnsmasq.categories, function (index, value) {
                                 $.extend(value, {
                                     expand: {
                                         hidden: true,
@@ -145,7 +186,7 @@
                             });
                         }
                     },
-                    loadCategories: function() {
+                    loadCategories: function () {
                         var options = dnsmasq.categoriesOptions;
 
                         options.updating = true;
@@ -153,20 +194,20 @@
                         // clear or initialize the data holder variable
                         options.data = {};
 
-                        $.each(dnsmasq.categories, function(index, value) {
+                        $.each(dnsmasq.categories, function (index, value) {
                             value.size = 0;
                             var url = value.url;
 
                             if (typeof url === 'string') {
                                 loadData(url);
                             } else { // array of urls
-                                $.each(url, function(index, value) {
+                                $.each(url, function (index, value) {
                                     loadData(value);
                                 });
                             }
 
                             function loadData(url) {
-                                $.get(url, function(data) {
+                                $.get(url, function (data) {
                                     loadCategory(data, options.data, value);
                                 });
                             }
@@ -175,12 +216,12 @@
                         function loadCategory(data, dict, cat) {
                             data = data.split('\n');
 
-                            $.each(data, function(index, value) {
+                            $.each(data, function (index, value) {
                                 if (typeof value === 'undefined') {
                                     return;
                                 }
 
-                                value = value.split(' ').map(function(e) { return $.trim(e); });
+                                value = value.split(' ').map(function (e) { return $.trim(e); });
 
                                 var key = value[0];
 
@@ -202,7 +243,7 @@
                             });
                         }
                     },
-                    get: function(domainName) {
+                    get: function (domainName) {
                         domainName = domainName.split('.');
 
                         while (domainName.length > 1) {
@@ -219,7 +260,7 @@
 
                         return false;
                     },
-                    getClasses: function(categoryObj) {
+                    getClasses: function (categoryObj) {
                         var categoryName = '';
 
                         if (typeof categoryObj === 'string') {
@@ -228,7 +269,7 @@
                             categoryName = categoryObj.name;
                         }
 
-                        var category = dnsmasq.categories.find(function(x) { return x.name === categoryName; });
+                        var category = dnsmasq.categories.find(function (x) { return x.name === categoryName; });
 
                         if (typeof category !== 'undefined') {
                             return category.classes;
@@ -254,13 +295,13 @@
                             { name: '1 hour', value: 60 * 60 * 1000 },
                             { name: '2 hours', value: 2 * 60 * 60 * 1000 }
                         ],
-                        initialize: function() {
+                        initialize: function () {
                             var $self = this;
 
-                            setInterval(function() {
+                            setInterval(function () {
                                 var data = $self.next();
 
-                                $.each(data, function(index, value) {
+                                $.each(data, function (index, value) {
                                     $self.datasets[index].data.push(value);
                                 });
 
@@ -284,7 +325,7 @@
                                 backgroundColor: 'rgba(54, 62, 135, 0.5)'
                             }
                         ],
-                        next: function() {
+                        next: function () {
                             var entry = [];
 
                             entry.push({ x: new Date().getTime(), y: this.current.raw });
@@ -302,10 +343,12 @@
                     expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 50 }
                 },
                 resolvers: [],
-                resolversOptions: { expand: { hidden: true, sort: { orderBy: 'key', orderReverse: false } }, sum: { totalRequests: 0 } },
+                resolversOptions: {
+                    expand: { hidden: true, sort: { orderBy: 'key', orderReverse: false } }, sum: { totalRequests: 0 }
+                },
                 domains: [],
                 domainsOptions: {
-                    expand: { hidden: false, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 10 }
+                    expand: { hidden: false, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 20 }
                 },
                 settings: {
                     bare_or_www_only: false,
@@ -315,20 +358,20 @@
                     show_raw_data_when_import: false,
                     show_raw_data_dnsmasq_only: true
                 },
-                isNonRoutableRequest: function(query) {
+                isNonRoutableRequest: function (query) {
                     return typeof query.ipaddress === 'undefined'
                         || query.ipaddress === '0.0.0.0'
                         || query.ipaddress.indexOf('NXDOMAIN') === 0
                         || query.ipaddress.indexOf('NODATA') === 0;
                 },
-                setHidden: function(nodes, value) {
-                    $.each(nodes, function(index, node) {
+                setHidden: function (nodes, value) {
+                    $.each(nodes, function (index, node) {
                         if (node.expand) {
                             node.expand.hidden = value;
                         }
                     });
                 },
-                log: function(loggedEvent) {
+                log: function (loggedEvent) {
                     var REQUESTOR_MAX_RECORDS = 100;
                     var toBeFilledWithDescription = [];
 
@@ -355,7 +398,7 @@
                     var topDomainKey = getTopDomain(loggedEvent.domain);
                     var subDomainKey = getSubDomain(loggedEvent.domain, topDomainKey);
 
-                    var client = dnsmasq.queries.find(function(x) { return x.key === loggedEvent.requestor; });
+                    var client = dnsmasq.queries.find(function (x) { return x.key === loggedEvent.requestor; });
                     if (typeof client === 'undefined') {
                         client = {
                             key: loggedEvent.requestor,
@@ -369,10 +412,10 @@
                         };
                         dnsmasq.queries.push(client);
 
-                        $scope.networkResolve(loggedEvent.requestor, client);
+                        networkResolve(loggedEvent.requestor, client);
                     }
 
-                    var resolver = dnsmasq.resolvers.find(function(x) { return x.key === loggedEvent.resolver; });
+                    var resolver = dnsmasq.resolvers.find(function (x) { return x.key === loggedEvent.resolver; });
                     if (typeof resolver === 'undefined') {
                         resolver = {
                             key: loggedEvent.resolver,
@@ -380,12 +423,12 @@
                         };
                         dnsmasq.resolvers.push(resolver);
 
-                        $scope.networkResolve(loggedEvent.resolver, resolver);
+                        networkResolve(loggedEvent.resolver, resolver);
                     }
                     ++resolver.totalRequests;
                     ++dnsmasq.resolversOptions.sum.totalRequests;
 
-                    var topDomain = dnsmasq.domains.find(function(x) { return x.key === topDomainKey; });
+                    var topDomain = dnsmasq.domains.find(function (x) { return x.key === topDomainKey; });
                     if (typeof topDomain === 'undefined') {
                         topDomain = {
                             key: topDomainKey,
@@ -404,7 +447,7 @@
                             dnsmasq.descriptions.requests.push({ domain: topDomainKey });
                         }
                     }
-                    var domain = topDomain.records.find(function(x) { return x.key === loggedEvent.domain; });
+                    var domain = topDomain.records.find(function (x) { return x.key === loggedEvent.domain; });
                     if (typeof domain === 'undefined') {
                         domain = {
                             key: loggedEvent.domain,
@@ -418,7 +461,7 @@
                         };
                         topDomain.records.push(domain);
                     }
-                    var requestor = domain.records.find(function(x) { return x.client.key === loggedEvent.requestor; });
+                    var requestor = domain.records.find(function (x) { return x.client.key === loggedEvent.requestor; });
                     if (typeof requestor === 'undefined') {
                         requestor = {
                             client: client,
@@ -430,13 +473,13 @@
                         domain.records.push(requestor);
                         ++domain.totalRequestors;
 
-                        var topDomainRequestors = topDomain.requestors.find(function(x) { return x === loggedEvent.requestor; });
+                        var topDomainRequestors = topDomain.requestors.find(function (x) { return x === loggedEvent.requestor; });
                         if (typeof topDomainRequestors === 'undefined') {
                             topDomain.requestors.push(loggedEvent.requestor);
                         }
                     }
                     if (categoryObj !== false) {
-                        var catTopDomain = categoryObj.records.find(function(x) { return x.key === topDomainKey; });
+                        var catTopDomain = categoryObj.records.find(function (x) { return x.key === topDomainKey; });
                         if (typeof catTopDomain === 'undefined') {
                             catTopDomain = {
                                 key: topDomainKey,
@@ -616,7 +659,7 @@
                         return info;
                     }
                 },
-                dataAdd: function(row) {
+                dataAdd: function (row) {
                     var data = dnsmasq.data;
                     var options = dnsmasq.dataOptions;
                     var chartData = dnsmasq.dataOptions.chart;
@@ -639,7 +682,7 @@
                         }
                     }
                 },
-                clearData: function() {
+                clearData: function () {
                     var $this = this;
 
                     $this.data = [];
@@ -661,11 +704,11 @@
                             dnsmasq.clearData();
                         }
 
-                        $scope.OldData = atob($scope.OldData.split(',')[1]);
-                        applySaveData($scope.OldData.split('\n'));
+                        dnsmasq.OldData = atob(dnsmasq.OldData.split(',')[1]);
+                        applySaveData(dnsmasq.OldData.split('\n'));
                     }
                 },
-                loadData: function(fromDate) {
+                loadData: function (fromDate) {
                     var $this = this;
 
                     $this.initializeLoadData(process);
@@ -682,25 +725,25 @@
                                 dnsmasq.clearData();
                             }
 
-                            $scope.OldDataFiles = files.reverse();
+                            dnsmasq.OldDataFiles = files.reverse();
 
                             processSavedFiles();
                         });
                     }
                 },
-                loadTodayData: function() {
+                loadTodayData: function () {
                     this.loadData(moment().startOf('day'));
                 },
-                loadThreeDayData: function() {
+                loadThreeDayData: function () {
                     this.loadData(moment().startOf('day').subtract(3, 'days'));
                 },
-                loadOneWeekData: function() {
+                loadOneWeekData: function () {
                     this.loadData(moment().startOf('day').subtract(7, 'days'));
                 },
                 initializeLoadData: function (callback) {
                     var $this = this;
 
-                    $scope.loading_data = true;
+                    dnsmasq.loading_data = true;
 
                     // minimize all the tables to speed up loading
                     dnsmasq.dataOptions.expand.hidden = true;
@@ -742,18 +785,279 @@
                     }
 
                     function isDoneLoading() {
-                        $scope.loading_data_on_server = $this.icons.loaded !== true || $this.descriptions.loaded !== true;
+                        dnsmasq.loading_data_on_server = $this.icons.loaded !== true || $this.descriptions.loaded !== true;
 
-                        return !$scope.loading_data_on_server;
+                        return !dnsmasq.loading_data_on_server;
                     }
                 },
-                saveData: function() {
+                saveData: function () {
                     var blob = new Blob([JSON.stringify(dnsmasq)], { type: 'application/json' });
                     saveAs(blob, "dnsmasq.txt");
-                }
-            }, model.dnsmasq);
+                },
+                processDnsmasq: function (event, line, imported) {
+                    if (dnsmasq.dataOptions.pause) {
+                        return;
+                    }
 
-            $scope.networkResolve = function(ipAddress, storageObject) {
+                    var split = line.split(' ')
+                        // remove null, undefined and empty
+                        .filter(function (e) { return e === 0 || e; })
+                        // trim the tokens
+                        .map(function (e) { return $.trim(e); });
+                    var baseIndex = 4; // the index of the start of the command data
+
+                    if (split.length <= baseIndex) {
+                        // print the line as is
+                        sendToAllSources(line);
+
+                        return;
+                    }
+
+                    // find the start index of the command
+                    for (var i = 0; i <= split.length; ++i) {
+                        var token = split[i];
+                        if (token && token.endsWith(':')) {
+                            baseIndex = i + 1;
+                            break;
+                        }
+                    }
+
+                    var timestamp = getDateTime(split);
+                    var loggerName = split[baseIndex - 1].slice(0, -1); // remove the ':' at the end of the name
+
+                    // write to the raw data table
+                    //-------------------------------------
+                    if (!imported || dnsmasq.settings.show_raw_data_when_import) {
+                        var message = line.substring(line.indexOf(loggerName) + loggerName.length + 2);
+                        var messageSplits = message.split(' ');
+
+                        if (messageSplits.length > 4) {
+                            var keyword = messageSplits[0];
+                            var verb = messageSplits[2];
+
+                            if (keyword === 'reply' && verb === 'is') {
+                                messageSplits[3] = message.substring(
+                                    keyword.length + 1 +
+                                    messageSplits[1].length + 1 +
+                                    verb.length + 1);
+
+                                while (messageSplits.length > 4) {
+                                    messageSplits.pop();
+                                }
+                            }
+                        }
+
+                        dnsmasq.dataAdd({
+                            time: timestamp,
+                            logger: loggerName,
+                            message: message,
+                            messageSplits: messageSplits
+                        });
+                    }
+                    //-------------------------------------
+
+                    var queryKey = "query[";
+                    var cmd = split[baseIndex];
+
+                    // DHCP
+                    if (loggerName.startsWith('dnsmasq-dhcp')) {
+                        if (split[baseIndex + 1].startsWith('DHCPACK')) {
+                            var ip = split[baseIndex + 2];
+                            var mac = split[baseIndex + 3];
+                            var hostindex = baseIndex + 4;
+                            var hostname = split.length >= hostindex ? split[hostindex] : '';
+                            var client = dnsmasq.queries.find(function (x) { return x.key === ip; });
+                            var hostnameObj = null; // will be assigned if client exists
+
+                            if (typeof client !== 'undefined') {
+                                if (typeof client.hostnames === 'undefined') {
+                                    client.hostnames = [];
+                                }
+                                hostnameObj = client.hostnames.find(function (x) {
+                                    var nameLowerCase = typeof x.name === 'string' ? x.name.toLowerCase() : x.name;
+                                    var hostnameLowerCase = typeof hostname === 'string' ? hostname.toLowerCase() : hostname;
+                                    return nameLowerCase === hostnameLowerCase || x.mac === mac;
+                                });
+                                if (typeof hostnameObj === 'undefined') {
+                                    hostnameObj = { mac: mac, name: hostname };
+                                    client.hostnames.push(hostnameObj);
+                                }
+                                hostnameObj.mac = mac;
+                                hostnameObj.time = timestamp;
+                            }
+
+                            if (typeof hostname !== 'undefined' && hostname.length) {
+                                if (typeof client !== 'undefined') {
+                                    client.hostname = hostname;
+                                }
+
+                                if (dnsmasq.hostnames[ip] !== hostname) {
+                                    dnsmasq.hostnames[ip] = hostname;
+
+                                    // cache the name on the server
+                                    $.post(dnsmasq.settings.HostnameResolveUrl + '/' + ip, { hostname: hostname });
+                                }
+                            }
+
+                            if (typeof mac !== 'undefined' && mac.length) {
+                                var vendor = dnsmasq.vendors[mac];
+                                var hostnameExists = hostnameObj && typeof hostnameObj !== 'undefined';
+
+                                if ($.isArray(vendor) && hostnameExists) {
+                                    vendor.push(hostnameObj);
+                                } else if (typeof vendor === 'undefined') {
+                                    var queue = [];
+                                    if (hostnameExists) {
+                                        queue.push(hostnameObj);
+                                    }
+                                    dnsmasq.vendors[mac] = queue;
+                                    dnsmasq.vendors.requests.push(mac);
+                                } else if (hostnameExists) {
+                                    hostnameObj.vendor = vendor;
+                                }
+                            }
+                        }
+
+                        return;
+                    }
+
+                    if (cmd.startsWith(queryKey)) {
+                        var query = {};
+                        query.type = "query";
+                        query.time = timestamp;
+                        query.domain = split[baseIndex + 1];
+                        query.requestor = split[baseIndex + 3];
+                        query.imported = imported;
+                        queries.push(query);
+                    } else {
+                        var domain = split[baseIndex + 1];
+                        var copula = split[baseIndex + 2];
+                        var ipaddress = split[baseIndex + 3];
+
+                        if (cquery !== null && copula === "is") {
+                            cquery.ipaddress = ipaddress;
+                            cquery.aliases.push(domain);
+
+                            if (isIP(cquery.ipaddress)) {
+                                dnsmasq.ipAddresses[cquery.domain] = cquery.ipaddress;
+                            }
+
+                            // if still cname then wait again
+                            if (ipaddress === "<CNAME>") {
+                                return;
+                            }
+
+                            dnsmasq.log(cquery);
+
+                            cquery = null; // reset cname query when done
+                        } else {
+                            var nqueries = [];
+
+                            $.each(queries, function (index, query) {
+                                if (query.domain === domain) {
+                                    if (cmd === "forwarded") {
+                                        query.resolver = ipaddress;
+                                    }
+                                    else if (copula === "is") {
+                                        if (cmd !== "reply") {
+                                            query.resolver = cmd;
+                                        }
+
+                                        query.ipaddress = ipaddress;
+
+                                        if (isIP(ipaddress)) {
+                                            dnsmasq.ipAddresses[query.domain] = ipaddress;
+                                        } else if (ipaddress === "<CNAME>") {
+                                            query.aliases = [];
+                                            cquery = query;
+                                            return;
+                                        }
+
+                                        dnsmasq.log(query);
+                                        return;
+                                    }
+                                } else {
+                                    // if it is on the queue too long (5 seconds), remove it
+                                    if (new Date() - query.time >= 5000) {
+                                        dnsmasq.log(query);
+                                        return;
+                                    }
+                                }
+
+                                // re-query to wait for the next data line
+                                nqueries.push(query);
+                            });
+
+                            queries = nqueries;
+                        }
+                    }
+
+                    // refresh the view model
+                    $scope.$apply();
+
+                    function getDateTime(split) {
+                        var month = split[0];
+                        var day = split[1];
+                        var year = new Date().getFullYear();
+                        var time = split[2];
+
+                        if (month.startsWith("<"))
+                            month = month.substring(month.indexOf(">") + 1);
+
+                        var date = [];
+                        date.push(year);
+                        date.push(month);
+                        date.push(day);
+                        date.push(time);
+
+                        date = moment(date.join(' '), 'YYYY MMM D HH:mm:ss');
+
+                        // because of missing year info in the log, we assume
+                        // future date value is for the time of the previous year
+                        if (imported && date > new Date()) {
+                            date.subtract(1, 'years');
+                        }
+
+                        return date;
+                    }
+                }
+            }, dnsmasqBase, model.dnsmasq);
+
+            // load category lists
+            dnsmasq.categoriesOptions.load();
+
+            dnsmasq.dataOptions.chart.initialize();
+
+            var queries = [];
+            var cquery = null;
+
+            // send syslog message to the raw data table
+            $(document).on("syslog", function (event, line) {
+                if (dnsmasq.settings.show_raw_data_dnsmasq_only === true) {
+                    return;
+                }
+
+                $scope.$apply(function () {
+                    dnsmasq.dataAdd(line);
+                });
+            });
+
+            // query for the website description which processes 10 request at a time
+            setInterval(function () {
+                if (dnsmasq.descriptions.processingCount < 10) {
+                    processDescription();
+                }
+            }, 100);
+
+            // query for the device's vendor information and it will process once per second
+            setInterval(processVendorInfo, 1000);
+
+            // load old data if any
+            $timeout(processSavedData);
+
+            return dnsmasq;
+
+            function networkResolve(ipAddress, storageObject) {
                 ipAddress = $.trim(ipAddress);
 
                 if (!isIP(ipAddress)) {
@@ -772,7 +1076,7 @@
                     dnsmasq.hostnames[ipAddress] = queue;
                     queue.push(storageObject);
 
-                    $.get(dnsmasq.settings.HostnameResolveUrl + '/' + ipAddress, function(data) {
+                    $.get(dnsmasq.settings.HostnameResolveUrl + '/' + ipAddress, function (data) {
                         // remove the domain name at the end of the hostname
                         if (data !== null && data.endsWith(dnsmasq.settings.DomainName)) {
                             data = data.substring(0, data.length - dnsmasq.settings.DomainName.length - 1);
@@ -781,8 +1085,8 @@
                         dnsmasq.hostnames[ipAddress] = data;
 
                         if (data !== ipAddress && data.length) {
-                            $scope.$apply(function() {
-                                $.each(queue, function(index, obj) {
+                            $scope.$apply(function () {
+                                $.each(queue, function (index, obj) {
                                     assignHostname(obj, data);
                                 });
                             });
@@ -798,275 +1102,10 @@
                     if (typeof client.hostnames === 'undefined') {
                         client.hostnames = [];
                     }
-                    var obj = client.hostnames.find(function(x) { return x.name === hostname; });
+                    var obj = client.hostnames.find(function (x) { return x.name === hostname; });
                     if (typeof obj === 'undefined') {
                         client.hostnames.push({ name: hostname, time: new Date() });
                     }
-                }
-            };
-
-            // load category lists
-            dnsmasq.categoriesOptions.load();
-
-            dnsmasq.dataOptions.chart.initialize();
-
-            var queries = [];
-            var cquery = null;
-
-            $(document).on("dnsmasq", processDnsmasq);
-
-            // send syslog message to the raw data table
-            $(document).on("syslog", function(event, line) {
-                if (dnsmasq.settings.show_raw_data_dnsmasq_only === true) {
-                    return;
-                }
-
-                $scope.$apply(function() {
-                    dnsmasq.dataAdd(line);
-                });
-            });
-
-            // query for the website description which processes 10 request at a time
-            setInterval(function() {
-                if (dnsmasq.descriptions.processingCount < 10) {
-                    processDescription();
-                }
-            }, 100);
-
-            // query for the device's vendor information and it will process once per second
-            setInterval(processVendorInfo, 1000);
-
-            // load old data if any
-            $timeout(processSavedData);
-
-            function processDnsmasq(event, line, imported) {
-                if (dnsmasq.dataOptions.pause) {
-                    return;
-                }
-
-                var split = line.split(' ')
-                    // remove null, undefined and empty
-                    .filter(function(e) { return e === 0 || e; })
-                    // trim the tokens
-                    .map(function(e) { return $.trim(e); });
-                var baseIndex = 4; // the index of the start of the command data
-
-                if (split.length <= baseIndex) {
-                    // print the line as is
-                    dnsmasq.dataAdd({
-                        time: new Date(),
-                        message: line
-                    });
-
-                    return;
-                }
-
-                // find the start index of the command
-                for (var i = 0; i <= split.length; ++i) {
-                    var token = split[i];
-                    if (token && token.endsWith(':')) {
-                        baseIndex = i + 1;
-                        break;
-                    }
-                }
-
-                var timestamp = getDateTime(split);
-                var loggerName = split[baseIndex - 1].slice(0, -1); // remove the ':' at the end of the name
-
-                // write to the raw data table
-                //-------------------------------------
-                if (!imported || dnsmasq.settings.show_raw_data_when_import) {
-                    var message = line.substring(line.indexOf(loggerName) + loggerName.length + 2);
-                    var messageSplits = message.split(' ');
-
-                    if (messageSplits.length > 4) {
-                        var keyword = messageSplits[0];
-                        var verb = messageSplits[2];
-
-                        if (keyword === 'reply' && verb === 'is') {
-                            messageSplits[3] = message.substring(
-                                keyword.length + 1 +
-                                messageSplits[1].length + 1 +
-                                verb.length + 1);
-
-                            while (messageSplits.length > 4) {
-                                messageSplits.pop();
-                            }
-                        }
-                    }
-
-                    dnsmasq.dataAdd({
-                        time: timestamp,
-                        logger: loggerName,
-                        message: message,
-                        messageSplits: messageSplits
-                    });
-                }
-                //-------------------------------------
-
-                var queryKey = "query[";
-                var cmd = split[baseIndex];
-
-                // DHCP
-                if (loggerName.startsWith('dnsmasq-dhcp')) {
-                    if (split[baseIndex + 1].startsWith('DHCPACK')) {
-                        var ip = split[baseIndex + 2];
-                        var mac = split[baseIndex + 3];
-                        var hostindex = baseIndex + 4;
-                        var hostname = split.length >= hostindex ? split[hostindex] : '';
-                        var client = dnsmasq.queries.find(function(x) { return x.key === ip; });
-                        var hostnameObj = null; // will be assigned if client exists
-
-                        if (typeof client !== 'undefined') {
-                            if (typeof client.hostnames === 'undefined') {
-                                client.hostnames = [];
-                            }
-                            hostnameObj = client.hostnames.find(function(x) {
-                                var nameLowerCase = typeof x.name === 'string' ? x.name.toLowerCase() : x.name;
-                                var hostnameLowerCase = typeof hostname === 'string' ? hostname.toLowerCase() : hostname;
-                                return nameLowerCase === hostnameLowerCase || x.mac === mac;
-                            });
-                            if (typeof hostnameObj === 'undefined') {
-                                hostnameObj = { mac: mac, name: hostname };
-                                client.hostnames.push(hostnameObj);
-                            }
-                            hostnameObj.mac = mac;
-                            hostnameObj.time = timestamp;
-                        }
-
-                        if (typeof hostname !== 'undefined' && hostname.length) {
-                            if (typeof client !== 'undefined') {
-                                client.hostname = hostname;
-                            }
-
-                            if (dnsmasq.hostnames[ip] !== hostname) {
-                                dnsmasq.hostnames[ip] = hostname;
-
-                                // cache the name on the server
-                                $.post(dnsmasq.settings.HostnameResolveUrl + '/' + ip, { hostname: hostname });
-                            }
-                        }
-
-                        if (typeof mac !== 'undefined' && mac.length) {
-                            var vendor = dnsmasq.vendors[mac];
-                            var hostnameExists = hostnameObj && typeof hostnameObj !== 'undefined';
-
-                            if ($.isArray(vendor) && hostnameExists) {
-                                vendor.push(hostnameObj);
-                            } else if (typeof vendor === 'undefined') {
-                                var queue = [];
-                                if (hostnameExists) {
-                                    queue.push(hostnameObj);
-                                }
-                                dnsmasq.vendors[mac] = queue;
-                                dnsmasq.vendors.requests.push(mac);
-                            } else if (hostnameExists) {
-                                hostnameObj.vendor = vendor;
-                            }
-                        }
-                    }
-
-                    return;
-                }
-
-                if (cmd.startsWith(queryKey)) {
-                    var query = {};
-                    query.type = "query";
-                    query.time = timestamp;
-                    query.domain = split[baseIndex + 1];
-                    query.requestor = split[baseIndex + 3];
-                    query.imported = imported;
-                    queries.push(query);
-                } else {
-                    var domain = split[baseIndex + 1];
-                    var copula = split[baseIndex + 2];
-                    var ipaddress = split[baseIndex + 3];
-
-                    if (cquery !== null && copula === "is") {
-                        cquery.ipaddress = ipaddress;
-                        cquery.aliases.push(domain);
-
-                        if (isIP(cquery.ipaddress)) {
-                            dnsmasq.ipAddresses[cquery.domain] = cquery.ipaddress;
-                        }
-
-                        // if still cname then wait again
-                        if (ipaddress === "<CNAME>") {
-                            return;
-                        }
-
-                        dnsmasq.log(cquery);
-
-                        cquery = null; // reset cname query when done
-                    } else {
-                        var nqueries = [];
-
-                        $.each(queries, function(index, query) {
-                            if (query.domain === domain) {
-                                if (cmd === "forwarded") {
-                                    query.resolver = ipaddress;
-                                }
-                                else if (copula === "is") {
-                                    if (cmd !== "reply") {
-                                        query.resolver = cmd;
-                                    }
-
-                                    query.ipaddress = ipaddress;
-
-                                    if (isIP(ipaddress)) {
-                                        dnsmasq.ipAddresses[query.domain] = ipaddress;
-                                    } else if (ipaddress === "<CNAME>") {
-                                        query.aliases = [];
-                                        cquery = query;
-                                        return;
-                                    }
-
-                                    dnsmasq.log(query);
-                                    return;
-                                }
-                            } else {
-                                // if it is on the queue too long (5 seconds), remove it
-                                if (new Date() - query.time >= 5000) {
-                                    dnsmasq.log(query);
-                                    return;
-                                }
-                            }
-
-                            // re-query to wait for the next data line
-                            nqueries.push(query);
-                        });
-
-                        queries = nqueries;
-                    }
-                }
-
-                // refresh the view model
-                $scope.$apply();
-
-                function getDateTime(split) {
-                    var month = split[0];
-                    var day = split[1];
-                    var year = new Date().getFullYear();
-                    var time = split[2];
-
-                    if (month.startsWith("<"))
-                        month = month.substring(month.indexOf(">") + 1);
-
-                    var date = [];
-                    date.push(year);
-                    date.push(month);
-                    date.push(day);
-                    date.push(time);
-
-                    date = moment(date.join(' '), 'YYYY MMM D HH:mm:ss');
-
-                    // because of missing year info in the log, we assume
-                    // future date value is for the time of the previous year
-                    if (imported && date > new Date()) {
-                        date.subtract(1, 'years');
-                    }
-
-                    return date;
                 }
             }
 
@@ -1096,12 +1135,12 @@
                     return;
                 }
 
-                $.get(url, { mac: mac }).done(function(data) {
+                $.get(url, { mac: mac }).done(function (data) {
                     if (typeof data !== 'undefined' && data.length > 1) {
                         dnsmasq.vendors[mac] = data;
 
                         if (typeof data !== 'undefined') {
-                            $.each(queue, function(index, client) {
+                            $.each(queue, function (index, client) {
                                 if (client !== null) {
                                     client.vendor = data;
                                 }
@@ -1137,7 +1176,6 @@
                     var ipAddress = dnsmasq.ipAddresses[request];
 
                     if (ipAddress === '0.0.0.0') {
-                        processResponse(null);
                         return;
                     }
 
@@ -1147,9 +1185,9 @@
                 ++dnsmasq.descriptions.processingCount;
 
                 $.get(url, request)
-                .done(processResponse).always(function() {
-                    --dnsmasq.descriptions.processingCount;
-                });
+                    .done(processResponse).always(function () {
+                        --dnsmasq.descriptions.processingCount;
+                    });
 
                 function processResponse(data) {
                     var domain = request.domain;
@@ -1203,14 +1241,14 @@
             }
 
             function processSavedFiles() {
-                var files = $scope.OldDataFiles;
+                var files = dnsmasq.OldDataFiles;
 
-                if (typeof files === 'undefined' || (files && files.length <= 0) || $scope.OldDataCancel === true) {
-                    $scope.$apply(function() {
-                        $scope.loading_data = false;
-                        $scope.OldDataFileInfo = null;
-                        $scope.OldDataFiles = null;
-                        $scope.OldDataCancel = false;
+                if (files === null || typeof files === 'undefined' || (files && files.length <= 0) || dnsmasq.OldDataCancel === true) {
+                    $scope.$apply(function () {
+                        dnsmasq.loading_data = false;
+                        dnsmasq.OldDataFileInfo = null;
+                        dnsmasq.OldDataFiles = null;
+                        dnsmasq.OldDataCancel = false;
                     });
 
                     return;
@@ -1218,12 +1256,12 @@
 
                 var file = files.pop(); // get the last element
 
-                $scope.$apply(function() {
-                    $scope.loading_data = true;
-                    $scope.OldDataFileInfo = file;
+                $scope.$apply(function () {
+                    dnsmasq.loading_data = true;
+                    dnsmasq.OldDataFileInfo = file;
                 });
 
-                $.get(dnsmasq.settings.OldDataUrl, { fileName: file.name }).fail(function(msg) {
+                $.get(dnsmasq.settings.OldDataUrl, { fileName: file.name }).fail(function (msg) {
                     console.log('Load data failed with message: ' + JSON.stringify(msg));
                 }).done(applySaveData);
             }
@@ -1237,13 +1275,13 @@
                     return;
                 }
 
-                $scope.OldData = data;
+                dnsmasq.OldData = data;
 
                 processSavedData();
             }
 
             function processSavedData() {
-                if ($scope.OldData === null || typeof $scope.OldData !== 'object') {
+                if (dnsmasq.OldData === null || typeof dnsmasq.OldData !== 'object') {
                     return;
                 }
 
@@ -1255,13 +1293,13 @@
                 // the data with time in increasing position because
                 // we retrieve each line using pop() which returns
                 // the last line of the array
-                $scope.OldData = $scope.OldData.reverse();
+                dnsmasq.OldData = dnsmasq.OldData.reverse();
 
-                $scope.OldDataCount = $scope.OldData.length;
-                $scope.OldDataLoadedCount = 0;
-                $scope.loading_data = true;
+                dnsmasq.OldDataCount = dnsmasq.OldData.length;
+                dnsmasq.OldDataLoadedCount = 0;
+                dnsmasq.loading_data = true;
 
-                var interval = setInterval(function() {
+                var interval = setInterval(function () {
                     var i = 0;
 
                     for (i = 0; i < NUMBER_OF_LINES_PER_INTERVAL; i++) {
@@ -1270,24 +1308,24 @@
                 });
 
                 function process() {
-                    if ($scope.OldDataCancel === true) {
-                        $scope.OldDataCancel = false;
-                        $scope.OldData = [];
+                    if (dnsmasq.OldDataCancel === true) {
+                        dnsmasq.OldDataCancel = false;
+                        dnsmasq.OldData = [];
                     }
 
-                    var data = $scope.OldData;
+                    var data = dnsmasq.OldData;
 
                     if (data.length > 0) {
                         var loggedEvent = data.pop(); // get the last line
-                        processDnsmasq(null, loggedEvent, true);
-                        $scope.OldDataLoadedCount++;
+                        dnsmasq.processDnsmasq(null, loggedEvent, true);
+                        dnsmasq.OldDataLoadedCount++;
                     } else {
                         clearInterval(interval);
-                        $scope.$apply(function() {
-                            $scope.OldData = [];
-                            $scope.OldDataCount = 0;
-                            $scope.OldDataLoadedCount = 0;
-                            $scope.loading_data = false;
+                        $scope.$apply(function () {
+                            dnsmasq.OldData = [];
+                            dnsmasq.OldDataCount = 0;
+                            dnsmasq.OldDataLoadedCount = 0;
+                            dnsmasq.loading_data = false;
                         });
                         processSavedFiles();
 
@@ -1318,7 +1356,8 @@
                     ? domain.substring(0, domain.length - topDomainKey.length - 1)
                     : null;
             }
-        }]);
+        }
+    }]);
 
     System.angular.directive('fileReader', ['$q', function($q) {
         var slice = Array.prototype.slice;

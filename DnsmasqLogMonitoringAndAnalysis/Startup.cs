@@ -160,7 +160,7 @@ namespace DnsmasqLogMonitoringAndAnalysis
                             string line = string.Empty;
 
                             while ((line = reader.ReadLine()) != null) {
-                                SendMessage(line);
+                                SendMessage(line, sender);
 
                                 log4net.LogManager.GetLogger(System.Reflection
                                     .MethodBase.GetCurrentMethod().DeclaringType)
@@ -175,9 +175,9 @@ namespace DnsmasqLogMonitoringAndAnalysis
             });
         }
 
-        public void SendMessage(string message)
+        public void SendMessage(string message, IPEndPoint sender = null)
         {
-            hubContext.Clients.All.SendAsync("loggedEvent", message);
+            hubContext.Clients.All.SendAsync("loggedEvent", message, sender == null ? null : sender.Address.ToString());
         }
 
         public static IEnumerable<FileInfo> GetLogFiles(DateTime? fromDate = null)

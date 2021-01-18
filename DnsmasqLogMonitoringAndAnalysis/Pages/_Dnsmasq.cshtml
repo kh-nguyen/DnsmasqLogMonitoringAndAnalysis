@@ -1,528 +1,535 @@
 ﻿<div class="content-wrapper container-fluid dnsmasq">
-    <div class="h3">
-        <span ng-if="dnsmasq.title"><span ng-bind="dnsmasq.title"></span>: <span ng-bind="dnsmasq.settings.NetworkPort" title="The listening network port"></span></span>
-        <mark ng-if="dnsmasq.dataOptions.pause"> pausing...</mark>
-        <div class="pull-right">
-            <a class="btn btn-default btn-sm hidden" ng-click="dnsmasq.saveData()" title="Save current data to disk"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span></a>
-            <div class="btn-group btn-sm padding-zero" ng-if="!loading_data">
-                <button type="button" class="btn btn-default" ng-click="dnsmasq.loadData()" title="Load all saved data from server">
-                    <span class="glyphicon glyphicon-open" aria-hidden="true"></span>
-                </button>
-                <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <span class="caret"></span>
-                    <span class="sr-only">Toggle Dropdown</span>
-                </button>
-                <ul class="dropdown-menu">
-                    <li><a href="#" ng-click="dnsmasq.loadTodayData()">Today</a></li>
-                    <li><a href="#" ng-click="dnsmasq.loadThreeDayData()">3 days</a></li>
-                    <li><a href="#" ng-click="dnsmasq.loadOneWeekData()">1 Week</a></li>
-                </ul>
-            </div>
-            <span ng-if="loading_data" class="glyphicon glyphicon-hdd text-primary" aria-hidden="true" title="Loading data..."></span>
-            <span ng-show="!loading_data" class="btn btn-primary fileinput-button" title="Click to import dnsmasq log data from a file">
-                <i class="glyphicon glyphicon-upload"></i>
-                <input type="file"
-                       file-reader
-                       accept="text/plain"
-                       ng-model="OldData"
-                       ng-change="dnsmasq.importData()" />
-            </span>
-            <a class="btn btn-default btn-sm" ng-click="dnsmasq.clearData()" title="Clear data"><span class="glyphicon glyphicon-erase" aria-hidden="true"></span></a>
-            <a class="btn btn-default btn-sm" ng-click="dnsmasq.dataOptions.pause = !dnsmasq.dataOptions.pause" title="Pause the program so incoming data will be skipped"><span class="glyphicon" ng-class="dnsmasq.dataOptions.pause ? 'glyphicon-play' : 'glyphicon-pause'" aria-hidden="true"></span></a>
-            <a class="btn btn-default btn-sm" ng-click="dnsmasq.dataOptions.settings = !dnsmasq.dataOptions.settings" title="Show the settings"><span class="glyphicon glyphicon-cog" aria-hidden="true"></span></a>
-            <small>Uptime: <span title="{{dnsmasq.startTime}}" am-time-ago="dnsmasq.startTime"></span></small>
-        </div>
-    </div>
-
-    <div class="row" ng-if="dnsmasq.dataOptions.settings">
-        <div class="col-xs-12">
-            <fieldset>
-                <legend><span class="glyphicon glyphicon-cog" aria-hidden="true"></span> Settings</legend>
-                <div class="col-xs-12 col-md-6">
-                    <table class="table table-condensed table-bordered">
-                        <caption>
-                            Ignored Clients
-                            <input type="text" ng-model="dnsmasq.ignored.input" />
-                            <button class="btn btn-default btn-sm" ng-click="dnsmasq.ignored.add()"><i class="glyphicon glyphicon-plus"></i></button>
-                            <span class="pull-right" ng-bind="dnsmasq.ignored.data.length | number" title="the number of ignored items"></span>
-                        </caption>
-                        <thead>
-                            <tr class="info"><th>IP Address</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr ng-repeat="node in dnsmasq.ignored.data">
-                                <td>
-                                    <span ng-bind="node"></span>
-                                    <button class="btn btn-default btn-sm pull-right" ng-click="dnsmasq.ignored.remove(node)"><i class="glyphicon glyphicon-remove"></i></button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <hr />
-
-                    <table class="table table-condensed table-bordered">
-                        <caption>
-                            Ignored Categories
-                            <input type="text" ng-model="dnsmasq.categoriesOptions.ignored.input" />
-                            <button class="btn btn-default btn-sm" ng-click="dnsmasq.categoriesOptions.ignored.add()"><i class="glyphicon glyphicon-plus"></i></button>
-                            <span class="pull-right" ng-bind="dnsmasq.categoriesOptions.ignored.data.length | number" title="the number of ignored items"></span>
-                        </caption>
-                        <thead>
-                            <tr class="info"><th>Category</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr ng-repeat="node in dnsmasq.categoriesOptions.ignored.data">
-                                <td>
-                                    <span ng-bind="node"></span>
-                                    <button class="btn btn-default btn-sm pull-right" ng-click="dnsmasq.categoriesOptions.ignored.remove(node)"><i class="glyphicon glyphicon-remove"></i></button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <hr />
-
-                    <table class="table table-condensed table-bordered" ng-if="!dnsmasq.settings.disable_website_description">
-                        <caption>
-                            Queue to request website description
-                            <input type="text" ng-model="dnsmasq.descriptions.input" />
-                            <button class="btn btn-default btn-sm" ng-click="dnsmasq.descriptions.add()"><i class="glyphicon glyphicon-plus"></i></button>
-                            <button class="btn btn-default btn-sm" ng-click="dnsmasq.descriptions.clear()" title="Clear the whole list"><i class="glyphicon glyphicon-trash"></i></button>
-                        </caption>
-                        <thead>
-                            <tr class="info"><th>Domain</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr ng-repeat="request in dnsmasq.descriptions.requests | limitTo: dnsmasq.descriptions.expand.limit : ((dnsmasq.descriptions.expand.page - 1) * dnsmasq.descriptions.expand.limit)">
-                                <td ng-bind="request"></td>
-                            </tr>
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colspan="5">
-                                    <div table-options-template records="dnsmasq.descriptions.requests" options="dnsmasq.descriptions" dnsmasq="dnsmasq"></div>
-                                </td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-                <div class="col-xs-12 col-md-6">
-                    <div>Local Domain Name: <input type="text" ng-model="dnsmasq.settings.DomainName" /></div>
-                    <div>IP Address Resolver Url: <input type="text" ng-model="dnsmasq.settings.HostnameResolveUrl" /></div>
-                    <div title="Maybe disabled to prevent interfering with the DNSMasq result because the web server may use the same DNS server"><input type="checkbox" ng-model="dnsmasq.settings.disable_website_description" />&nbsp;Disable retrieving website description</div>
-                    <div><input type="checkbox" ng-model="dnsmasq.settings.show_raw_data_when_import" />&nbsp;Show raw data when importing log files</div>
-                    <div><input type="checkbox" ng-model="dnsmasq.settings.show_raw_data_dnsmasq_only" />&nbsp;Show only dnsmasq log messages in the raw data table</div>
-                    <div><input type="checkbox" ng-model="dnsmasq.settings.reset_data_when_load_log_files" />&nbsp;Clear current data when importing log files</div>
-                    <div><input type="checkbox" ng-model="dnsmasq.settings.retrieve_saved_data_when_load_log_files" />&nbsp;Retrieve all saved <abbr title="website icons and descriptions">data</abbr> when importing log files</div>
-                    <div title="Usefully to keep only main domains (www.website.com or website.com) instead of the ones automatically visited by a program on the client's device"><input type="checkbox" ng-model="dnsmasq.settings.bare_or_www_only" />&nbsp;Keep bare or WWW domains only</div>
-                </div>
-            </fieldset>
-        </div>
-
-        <div class="clearfix"></div>
-
-        <hr />
-    </div>
-
-    <div class="row">
-        <div class="col-xs-12" ng-show="loading_data">
-            <h6>
-                <span class="glyphicon glyphicon-warning-sign"></span>
-                Loading
-                <span ng-if="loading_data_on_server">all icons and descriptions on the server...</span>
-                <span ng-if="OldDataFileInfo">
-                    <span ng-bind="OldDataFileInfo.name" class="text-primary"></span>
-                    <span ng-bind="OldDataFileInfo.length | formatBytes"></span>
-                </span>
-                <span ng-show="OldDataLoadedCount != OldDataCount">
-                    <span ng-bind="OldDataLoadedCount | number"></span>
-                    of
-                    <span ng-bind="OldDataCount | number"></span>
-                    lines...
-                    <button class="btn btn-default btn-sm" ng-click="OldDataCancel = true" title="Cancel loading data process">
-                        <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
-                    </button>
-                </span>
-            </h6>
-        </div>
-
-        <div class="col-xs-12">
-            <div class="row">
-                <div class="col-xs-12">
-                    <table class="table table-condensed table-bordered">
-                        <caption>
-                            <span toggle-hidden options="dnsmasq.domainsOptions.expand"></span>
-                            Domains: <span ng-bind="dnsmasq.domains.length | number"></span>
-                            <span class="pull-right">
-                                <a class="btn btn-default btn-sm" title="Expand All" ng-click="dnsmasq.domainsOptions.expand.all = !dnsmasq.domainsOptions.expand.all; dnsmasq.setHidden(dnsmasq.domains, !dnsmasq.domainsOptions.expand.all)"><span class="glyphicon" ng-class="dnsmasq.domainsOptions.expand.all ? 'glyphicon-minus' : 'glyphicon-plus'" aria-hidden="true"></span></a>
-                                <a class="btn btn-default btn-sm" title="Search" ng-click="dnsmasq.domainsOptions.searchShow = !dnsmasq.domainsOptions.searchShow"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
-                                <input placeholder="search" ng-if="dnsmasq.domainsOptions.searchShow" ng-model="dnsmasq.domainsOptions.search.key" />
-                            </span>
-                        </caption>
-                        <thead ng-if="!dnsmasq.domainsOptions.expand.hidden">
-                            <tr class="info">
-                                <th sort-direction options="dnsmasq.domainsOptions" order-by="key" title="Site"></th>
-                                <th sort-direction options="dnsmasq.domainsOptions" order-by="categories" title="Categories"></th>
-                                <th sort-direction options="dnsmasq.domainsOptions" order-by="requestors.length" title="Clients"></th>
-                                <th sort-direction options="dnsmasq.domainsOptions" order-by="totalRequests" title="Requests"></th>
-                                <th sort-direction options="dnsmasq.domainsOptions" order-by="lastRequestTime" title="Last Time"></th>
-                                <th sort-direction options="dnsmasq.domainsOptions" order-by="description.description" title="Last Description" ng-if="!dnsmasq.settings.disable_website_description"></th>
-                            </tr>
-                        </thead>
-                        <tbody ng-if="!dnsmasq.domainsOptions.expand.hidden">
-                            <tr ng-repeat-start="domain in dnsmasq.domains | filter:dnsmasq.domainsOptions.search:false | orderBy:dnsmasq.domainsOptions.expand.sort.orderBy:dnsmasq.domainsOptions.expand.sort.orderReverse | limitTo: dnsmasq.domainsOptions.expand.limit : ((dnsmasq.domainsOptions.expand.page - 1) * dnsmasq.domainsOptions.expand.limit)">
-                                <td>
-                                    <span toggle-hidden options="domain.expand"></span>
-                                    <img ng-if="domain.icon" class="icon" ng-src="{{domain.icon}}" alt="" />
-                                    <span ng-bind="domain.key"></span>
-                                </td>
-                                <td class="categories">
-                                    <ul class="list-inline">
-                                        <li ng-repeat="category in domain.categories | orderBy:'name'" ng-class="dnsmasq.categoriesOptions.getClasses(category)" ng-bind="category.name"></li>
-                                    </ul>
-                                </td>
-                                <td><span ng-bind="domain.requestors.length | number"></span></td>
-                                <td><span ng-bind="domain.totalRequests | number" class="update-item value-{{domain.totalRequests}}"></span></td>
-                                <td>
-                                    <div ng-repeat="record in domain.records | orderBy:'lastRequestTime':true | limitTo:1">
-                                        <span ng-bind="record.lastRequestor.client.hostname ? record.lastRequestor.client.hostname : record.lastRequestor.client.key" title="{{record.lastRequestor.client.key}}"></span>
-                                        <span ng-if="record.subdomain" class="text-primary" ng-bind="record.subdomain" title="{{record.key}}"></span>
-                                        <span title="{{record.lastRequestTime}}" am-time-ago="record.lastRequestTime"></span>
-                                    </div>
-                                </td>
-                                <td class="description" ng-if="!dnsmasq.settings.disable_website_description">
-                                    <div ng-if="domain.description" title="{{domain.description.bodyText}}">
-                                        <img ng-if="domain.description.icon" class="icon" ng-src="{{domain.description.icon}}" alt="" />
-                                        <span ng-if="domain.description.subdomain" class="text-primary" ng-bind="domain.description.subdomain" title="{{domain.description.domain}}"></span>
-                                        <span ng-if="domain.description.description || domain.description.title">
-                                            <small ng-bind-html="domain.description.description ? domain.description.description : domain.description.title | html"></small>
-                                        </span>
-                                    </div>
-                                    <div ng-if="!domain.description && domain.info">
-                                        <img ng-if="domain.icon" class="icon" ng-src="{{domain.icon}}" alt="" />
-                                        <small ng-bind="domain.info | html"></small>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr ng-repeat-end ng-if="!domain.expand.hidden">
-                                <td colspan="6">
-                                    <div domains-template domains="domain" dnsmasq="dnsmasq"></div>
-                                </td>
-                            </tr>
-                        </tbody>
-                        <tfoot ng-if="!dnsmasq.domainsOptions.expand.hidden">
-                            <tr>
-                                <td colspan="6">
-                                    <div table-options-template records="dnsmasq.domains" options="dnsmasq.domainsOptions" dnsmasq="dnsmasq"></div>
-                                </td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-
-                <div class="col-xs-12 col-md-6">
-                    <table class="table table-condensed table-bordered">
-                        <caption>
-                            <span toggle-hidden options="dnsmasq.resolversOptions.expand"></span>
-                            Resolvers: <span ng-bind="dnsmasq.resolvers | keylength | number"></span>
-                            <span class="pull-right">
-                                <a class="btn btn-default btn-sm" title="Search" ng-click="dnsmasq.resolversOptions.searchShow = !dnsmasq.resolversOptions.searchShow"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
-                                <input placeholder="search" ng-show="dnsmasq.resolversOptions.searchShow" ng-model="dnsmasq.resolversOptions.search" />
-                            </span>
-                        </caption>
-                        <thead ng-if="!dnsmasq.resolversOptions.expand.hidden">
-                            <tr class="info">
-                                <th sort-direction options="dnsmasq.resolversOptions" order-by="key" title="Resolver"></th>
-                                <th colspan="2" sort-direction options="dnsmasq.resolversOptions" order-by="totalRequests" title="Requests"></th>
-                            </tr>
-                        </thead>
-                        <tbody ng-if="!dnsmasq.resolversOptions.expand.hidden">
-                            <tr ng-repeat="resolver in dnsmasq.resolvers | filter:dnsmasq.resolversOptions.search | orderBy:dnsmasq.resolversOptions.expand.sort.orderBy:dnsmasq.resolversOptions.expand.sort.orderReverse" class="animate-row">
-                                <td><span ng-bind="resolver.key"></span><span ng-if="resolver.key != resolver.hostname">&nbsp;<span ng-bind="resolver.hostname"></span></span></td>
-                                <td><span ng-bind="resolver.totalRequests | number" class="update-item value-{{resolver.totalRequests}}"></span></td>
-                                <td><span ng-bind="(resolver.totalRequests / dnsmasq.resolversOptions.sum.totalRequests) * 100 | number:2"></span>%</td>
-                            </tr>
-                        </tbody>
-                        <tfoot ng-if="!dnsmasq.resolversOptions.expand.hidden">
-                            <tr>
-                                <td align="right">Total:</td>
-                                <td colspan="2"><span ng-bind="dnsmasq.resolversOptions.sum.totalRequests | number" class="update-item value-{{dnsmasq.resolversOptions.sum.totalRequests}}"></span></td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-
-                <div class="col-xs-12 col-md-6">
-                    <table class="table table-condensed table-bordered">
-                        <caption>
-                            <span toggle-hidden options="dnsmasq.categoriesOptions.expand"></span>
-                            Categories: <span ng-bind="dnsmasq.categories | keylength | number"></span>
-                            <span class="pull-right">
-                                <a class="btn btn-default btn-sm" ng-click="dnsmasq.categoriesOptions.loadCategories()" title="Update all categories"><span class="glyphicon glyphicon glyphicon-refresh" aria-hidden="true"></span></a>
-                            </span>
-                        </caption>
-                        <thead ng-if="!dnsmasq.categoriesOptions.expand.hidden">
-                            <tr class="info">
-                                <th sort-direction options="dnsmasq.categoriesOptions" order-by="name" title="Name"></th>
-                                <th sort-direction options="dnsmasq.categoriesOptions" order-by="size" title="DB Count"></th>
-                                <th sort-direction options="dnsmasq.categoriesOptions" order-by="records.length" title="Domains"></th>
-                                <th sort-direction options="dnsmasq.categoriesOptions" order-by="requestors.length" title="Clients"></th>
-                                <th sort-direction options="dnsmasq.categoriesOptions" order-by="hits" title="Hits"></th>
-                            </tr>
-                        </thead>
-                        <tbody ng-if="!dnsmasq.categoriesOptions.expand.hidden">
-                            <tr ng-repeat-start="category in dnsmasq.categories | orderBy:dnsmasq.categoriesOptions.expand.sort.orderBy:dnsmasq.categoriesOptions.expand.sort.orderReverse">
-                                <td>
-                                    <span toggle-hidden options="category.expand"></span>
-                                    <span ng-class="dnsmasq.categoriesOptions.getClasses(category.name)" ng-bind="category.name" title="{{category.url}}"></span>
-                                </td>
-                                <td ng-bind="category.size | number"></td>
-                                <td ng-bind="category.records.length | number"></td>
-                                <td ng-bind="category.requestors.length | number"></td>
-                                <td><span ng-bind="category.hits | number" class="update-item value-{{category.hits}}"></span></td>
-                            </tr>
-                            <tr ng-repeat-end ng-if="!category.expand.hidden">
-                                <td colspan="5">
-                                    <table class="table table-condensed table-bordered">
-                                        <thead>
-                                            <tr class="info">
-                                                <th sort-direction options="category" order-by="key" title="Site"></th>
-                                                <th sort-direction options="category" order-by="requestors.length" title="Clients"></th>
-                                                <th sort-direction options="category" order-by="records.length" title="Subs"></th>
-                                                <th sort-direction options="category" order-by="totalRequests" title="Hits"></th>
-                                                <th sort-direction options="category" order-by="lastRequestTime" title="Last Time"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr ng-repeat-start="topdomain in category.records | orderBy:category.expand.sort.orderBy:category.expand.sort.orderReverse | limitTo: category.expand.limit:((category.expand.page - 1) * category.expand.limit)">
-                                                <td>
-                                                    <span toggle-hidden options="topdomain.expand"></span>
-                                                    <img ng-if="topdomain.info.icon || topdomain.info.description.icon" class="icon" ng-src="{{topdomain.info.icon ? topdomain.info.icon : topdomain.info.description.icon}}" alt="" />
-                                                    <span ng-bind="topdomain.key"></span>
-                                                </td>
-                                                <td><span ng-bind="topdomain.requestors.length | number" class="update-item value-{{topdomain.requestors.length}}"></span></td>
-                                                <td><span ng-bind="topdomain.records.length | number" class="update-item value-{{topdomain.records.length}}"></span></td>
-                                                <td><span ng-bind="topdomain.totalRequests | number" class="update-item value-{{topdomain.totalRequests}}"></span></td>
-                                                <td><span ng-bind="topdomain.lastRequestor.client.hostname ? topdomain.lastRequestor.client.hostname : topdomain.lastRequestor.client.key"></span>: <span title="{{topdomain.lastRequestTime}}" am-time-ago="topdomain.lastRequestTime"></span></td>
-                                            </tr>
-                                            <tr ng-repeat-end ng-if="!topdomain.expand.hidden">
-                                                <td colspan="5"><div domains-template domains="topdomain" dnsmasq="dnsmasq"></div></td>
-                                            </tr>
-                                        </tbody>
-                                        <tfoot>
-                                            <tr>
-                                                <td colspan="5">
-                                                    <div table-options-template records="category.records" options="category" dnsmasq="dnsmasq"></div>
-                                                </td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-xs-12">
-                    <table class="table table-condensed table-bordered">
-                        <caption>
-                            <span toggle-hidden options="dnsmasq.queriesOptions.expand"></span>
-                            Clients: <span ng-bind="dnsmasq.queries | keylength | number"></span>
-                            <span class="pull-right">
-                                <a class="btn btn-default btn-sm" title="Request to resolve the hostnames of the clients" ng-click="dnsmasq.queriesOptions.resolveNames()"><span class="glyphicon glyphicon-refresh" aria-hidden="true"></span></a>
-                                <a class="btn btn-default btn-sm" title="Expand All" ng-click="dnsmasq.queriesOptions.expand.all = !dnsmasq.queriesOptions.expand.all; dnsmasq.setHidden(dnsmasq.queries, !dnsmasq.queriesOptions.expand.all)"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.expand.all ? 'glyphicon-minus' : 'glyphicon-plus'" aria-hidden="true"></span></a>
-                                <a class="btn btn-default btn-sm" title="Search" ng-click="dnsmasq.queriesOptions.searchShow = !dnsmasq.queriesOptions.searchShow"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
-                                <input placeholder="search" ng-show="dnsmasq.queriesOptions.searchShow" ng-model="dnsmasq.queriesOptions.search.key" />
-                            </span>
-                        </caption>
-                        <thead ng-if="!dnsmasq.queriesOptions.expand.hidden">
-                            <tr class="info">
-                                <th sort-direction options="dnsmasq.queriesOptions" order-by="key" title="Node"></th>
-                                <th sort-direction options="dnsmasq.queriesOptions" order-by="categories" title="Categories"></th>
-                                <th sort-direction options="dnsmasq.queriesOptions" order-by="totalTopDomains" title="Sites"></th>
-                                <th sort-direction options="dnsmasq.queriesOptions" order-by="totalDomains" title="Subs"></th>
-                                <th sort-direction options="dnsmasq.queriesOptions" order-by="totalRequests" title="Requests"></th>
-                                <th sort-direction options="dnsmasq.queriesOptions" order-by="lastRequestTime" title="Last Time"></th>
-                            </tr>
-                        </thead>
-                        <tbody ng-if="!dnsmasq.queriesOptions.expand.hidden">
-                            <tr ng-repeat-start="node in dnsmasq.queries | filter:dnsmasq.queriesOptions.search | orderBy:dnsmasq.queriesOptions.expand.sort.orderBy:dnsmasq.queriesOptions.expand.sort.orderReverse | limitTo: dnsmasq.queriesOptions.expand.limit:((dnsmasq.queriesOptions.expand.page - 1) * dnsmasq.queriesOptions.expand.limit)" class="animate-row">
-                                <td>
-                                    <span toggle-hidden options="node.expand"></span>
-                                    <span ng-bind="node.key" title="IP Address"></span>
-                                    <div ng-if="node.hostnames.length" ng-repeat-start="hostname in node.hostnames">
-                                        <div ng-bind="hostname.vendor" title="Manufacturer"></div>
-                                        <div ng-bind="hostname.mac" title="MAC Address"></div>
-                                        <div ng-bind="hostname.name" title="Hostname"></div>
-                                    </div>
-                                    <br ng-repeat-end ng-if="!$last" />
-                                </td>
-                                <td class="categories">
-                                    <ul class="list-inline">
-                                        <li ng-repeat="category in node.categories | orderBy:'name'" ng-class="dnsmasq.categoriesOptions.getClasses(category)" ng-bind="category.name"></li>
-                                    </ul>
-                                </td>
-                                <td><span ng-bind="node.totalTopDomains | number" class="update-item value-{{node.totalTopDomains}}"></span></td>
-                                <td><span ng-bind="node.totalDomains | number" class="update-item value-{{node.totalDomains}}"></span></td>
-                                <td><span ng-bind="node.totalRequests | number" class="update-item value-{{node.totalRequests}}"></span></td>
-                                <td>
-                                    <div ng-repeat="topdomain in node.records | orderBy:'lastRequestTime':true | limitTo:5">
-                                        <img ng-if="topdomain.info.icon || topdomain.info.description.icon" class="icon" ng-src="{{topdomain.info.icon ? topdomain.info.icon : topdomain.info.description.icon}}" alt="" />
-                                        <span class="text-primary" ng-bind="topdomain.key"></span>
-                                        <span title="{{topdomain.lastRequestTime}}" am-time-ago="topdomain.lastRequestTime"></span>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr ng-repeat-end ng-if="!node.expand.hidden">
-                                <td colspan="6">
-                                    <table class="table table-condensed table-bordered">
-                                        <thead>
-                                            <tr class="warning">
-                                                <th sort-direction options="node" order-by="key" title="Site"></th>
-                                                <th sort-direction options="node" order-by="categories" title="Categories"></th>
-                                                <th sort-direction options="node" order-by="totalDomains" title="Subs"></th>
-                                                <th sort-direction options="node" order-by="totalRequests" title="Requests"></th>
-                                                <th sort-direction options="node" order-by="lastRequestTime" title="Last Time"></th>
-                                                <th sort-direction options="node" order-by="description" title="Last Description" ng-if="!dnsmasq.settings.disable_website_description"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr ng-repeat-start="topdomain in node.records | filter:dnsmasq.queriesOptions.search | orderBy:node.expand.sort.orderBy:node.expand.sort.orderReverse | limitTo: node.expand.limit:((node.expand.page - 1) * node.expand.limit)">
-                                                <td>
-                                                    <span toggle-hidden options="topdomain.expand"></span>
-                                                    <img ng-if="topdomain.info.icon || topdomain.info.description.icon" class="icon" ng-src="{{topdomain.info.icon ? topdomain.info.icon : topdomain.info.description.icon}}" alt="" />
-                                                    <span ng-bind="topdomain.key"></span>
-                                                </td>
-                                                <td>
-                                                    <ul class="list-inline">
-                                                        <li ng-repeat="category in topdomain.categories | orderBy:'name'" ng-class="dnsmasq.categoriesOptions.getClasses(category)" ng-bind="category.name"></li>
-                                                    </ul>
-                                                </td>
-                                                <td><span ng-bind="topdomain.totalDomains | number" class="update-item value-{{topdomain.totalDomains}}"></span></td>
-                                                <td><span ng-bind="topdomain.totalRequests | number" class="update-item value-{{topdomain.totalRequests}}"></span></td>
-                                                <td>
-                                                    <div ng-repeat="record in topdomain.records | orderBy:'time':true | limitTo:1">
-                                                        <span ng-if="record.subdomain" class="text-primary" ng-bind="record.subdomain" title="{{record.domain}}"></span>
-                                                        <span title="{{record.time}}" am-time-ago="record.time"></span>
-                                                    </div>
-                                                </td>
-                                                <td class="description" ng-if="!dnsmasq.settings.disable_website_description">
-                                                    <div ng-if="topdomain.description" title="{{topdomain.description.bodyText}}">
-                                                        <img ng-if="topdomain.description.icon" class="icon" ng-src="{{topdomain.description.icon}}" alt="" />
-                                                        <span ng-if="topdomain.description.subdomain" class="text-primary" ng-bind="topdomain.description.subdomain" title="{{topdomain.description.domain}}"></span>
-                                                        <span ng-if="topdomain.description.description || topdomain.description.title">
-                                                            <small ng-bind-html="topdomain.description.description ? topdomain.description.description : topdomain.description.title | html"></small>
-                                                        </span>
-                                                    </div>
-                                                    <div ng-if="!topdomain.description && topdomain.info.info">
-                                                        <img ng-if="topdomain.info.icon" class="icon" ng-src="{{topdomain.info.icon}}" alt="" />
-                                                        <small ng-bind="topdomain.info.info | html"></small>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr ng-repeat-end ng-if="!topdomain.expand.hidden">
-                                                <td colspan="6">
-                                                    <table class="table table-condensed">
-                                                        <thead>
-                                                            <tr>
-                                                                <th sort-direction options="topdomain" order-by="domain" title="Domain"></th>
-                                                                <th sort-direction options="topdomain" order-by="ipaddress" title="IP Address"></th>
-                                                                <th sort-direction options="topdomain" order-by="resolver" title="Resolver"></th>
-                                                                <th sort-direction options="topdomain" order-by="category.name" title="Category"></th>
-                                                                <th sort-direction options="topdomain" order-by="totalRequests" title="Count"></th>
-                                                                <th sort-direction options="topdomain" order-by="time" title="Last Time"></th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            <tr ng-repeat="query in topdomain.records | orderBy:topdomain.expand.sort.orderBy:topdomain.expand.sort.orderReverse | limitTo: topdomain.expand.limit:((topdomain.expand.page - 1) * topdomain.expand.limit)"
-                                                                ng-class=" dnsmasq.isNonRoutableRequest(query) ? 'text-muted' : (query.resolver == 'cached' ? 'text-success' : '')">
-                                                                <td ng-bind="query.subdomain ? query.subdomain : query.domain" title="{{query.domain}}"></td>
-                                                                <td ng-bind="query.ipaddress"></td>
-                                                                <td ng-bind="query.resolver"></td>
-                                                                <td ng-bind="query.category.name"></td>
-                                                                <td><span ng-bind="query.totalRequests" class="update-item value-{{query.totalRequests}}"></span></td>
-                                                                <td title="{{query.time}}" am-time-ago="query.time"></td>
-                                                            </tr>
-                                                        </tbody>
-                                                        <tfoot>
-                                                            <tr>
-                                                                <td colspan="6">
-                                                                    <div table-options-template records="topdomain.records" options="topdomain" dnsmasq="dnsmasq"></div>
-                                                                </td>
-                                                            </tr>
-                                                        </tfoot>
-                                                    </table>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                        <tfoot>
-                                            <tr>
-                                                <td colspan="6">
-                                                    <div table-options-template records="node.records" options="node" dnsmasq="dnsmasq"></div>
-                                                </td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </td>
-                            </tr>
-                        </tbody>
-                        <tfoot ng-if="!dnsmasq.queriesOptions.expand.hidden">
-                            <tr>
-                                <td colspan="6">
-                                    <div table-options-template records="dnsmasq.queries" options="dnsmasq.queriesOptions" dnsmasq="dnsmasq"></div>
-                                </td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xs-12">
-            <table class="table table-condensed table-bordered">
-                <caption>
-                    <span toggle-hidden options="dnsmasq.dataOptions.expand"></span>
-                    Raw Data:
-                    <span ng-bind="dnsmasq.dataOptions.count | number" title="Total number of processed lines"></span>
-                    <span class="pull-right">
-                        <a class="btn btn-default btn-sm" title="Chart" ng-click="dnsmasq.dataOptions.chart.show = !dnsmasq.dataOptions.chart.show"><span class="glyphicon glyphicon glyphicon-signal" aria-hidden="true"></span></a>
-                        <span ng-if="dnsmasq.dataOptions.chart.show">
-                            Duration:
-                            <select ng-change="dnsmasq.dataOptions.chart.element.update({ duration: 0 })"
-                                    ng-model="dnsmasq.dataOptions.chart.element.options.scales.xAxes[0].realtime.duration">
-                                <option ng-repeat="duration in dnsmasq.dataOptions.chart.durations" value="{{duration.value}}" ng-bind="duration.name"></option>
-                            </select>
-                        </span>
-                        <a class="btn btn-default btn-sm" title="Search" ng-click="dnsmasq.dataOptions.searchShow = !dnsmasq.dataOptions.searchShow"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
-                        <input placeholder="search" ng-if="dnsmasq.dataOptions.searchShow" ng-model="dnsmasq.dataOptions.search" />
-                        Limit:
-                        <select ng-options="limit for limit in dnsmasq.limits"
-                                ng-model="dnsmasq.dataOptions.expand.limit"
-                                title="Raw data storage size limit"></select>
+    <ul class="nav nav-tabs" role="tablist" ng-show="sources.length > 1">
+        <li role="presentation" ng-repeat="dnsmasq in sources" ng-class="selectedSourceIndex == $index ? 'active' : ''"><a href="#dnsmasq-{{$index}}" aria-controls="dnsmasq-{{$index}}" role="tab" data-toggle="tab" ng-bind="dnsmasq.sourceName"></a></li>
+    </ul>
+    <div class="tab-content">
+        <div role="tabpanel" class="tab-pane" ng-class="selectedSourceIndex == $index ? 'active' : ''" id="dnsmasq-{{$index}}" ng-repeat="dnsmasq in sources">
+            <div class="h3">
+                <span ng-if="dnsmasq.title"><span ng-bind="dnsmasq.title"></span>: <span ng-bind="dnsmasq.settings.NetworkPort" title="The listening network port"></span></span>
+                <mark ng-if="dnsmasq.dataOptions.pause"> pausing...</mark>
+                <div class="pull-right">
+                    <a class="btn btn-default btn-sm hidden" ng-click="dnsmasq.saveData()" title="Save current data to disk"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span></a>
+                    <div class="btn-group btn-sm padding-zero" ng-if="!dnsmasq.loading_data">
+                        <button type="button" class="btn btn-default" ng-click="dnsmasq.loadData()" title="Load all saved data from server">
+                            <span class="glyphicon glyphicon-open" aria-hidden="true"></span>
+                        </button>
+                        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <span class="caret"></span>
+                            <span class="sr-only">Toggle Dropdown</span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a href="#" ng-click="dnsmasq.loadTodayData()">Today</a></li>
+                            <li><a href="#" ng-click="dnsmasq.loadThreeDayData()">3 days</a></li>
+                            <li><a href="#" ng-click="dnsmasq.loadOneWeekData()">1 Week</a></li>
+                        </ul>
+                    </div>
+                    <span ng-if="dnsmasq.loading_data" class="glyphicon glyphicon-hdd text-primary" aria-hidden="true" title="Loading data..."></span>
+                    <span ng-show="!dnsmasq.loading_data" class="btn btn-primary fileinput-button" title="Click to import dnsmasq log data from a file">
+                        <i class="glyphicon glyphicon-upload"></i>
+                        <input type="file"
+                               file-reader
+                               accept="text/plain"
+                               ng-model="dnsmasq.OldData"
+                               ng-change="dnsmasq.importData()" />
                     </span>
-                    <canvas real-time-data-chart ng-if="dnsmasq.dataOptions.chart.show" style="width: 800px; height: 200px"></canvas>
-                </caption>
-                <thead ng-if="!dnsmasq.dataOptions.expand.hidden">
-                    <tr class="info">
-                        <th sort-direction options="dnsmasq.dataOptions" order-by="time" title="Time"></th>
-                        <th sort-direction options="dnsmasq.dataOptions" order-by="logger" title="Logger">Logger</th>
-                        <th colspan="4">Message</th>
-                    </tr>
-                </thead>
-                <tbody ng-if="!dnsmasq.dataOptions.expand.hidden">
-                    <tr ng-repeat="row in dnsmasq.data | filter:dnsmasq.dataOptions.search | orderBy:dnsmasq.dataOptions.expand.sort.orderBy:dnsmasq.dataOptions.expand.sort.orderReverse | limitTo: dnsmasq.dataOptions.expand.limit">
-                        <td title="{{row.time}}" am-time-ago="row.time"></td>
-                        <td ng-bind="row.logger"></td>
-                        <td ng-bind="row.messageSplits.length == 4 ? row.messageSplits[0] : row.message" colspan="{{row.messageSplits.length == 4 ? 0 : 4}}"></td>
-                        <td ng-bind="row.messageSplits[1]" ng-if="row.messageSplits.length == 4" class="table-cell"></td>
-                        <td ng-bind="row.messageSplits[2]" ng-if="row.messageSplits.length == 4" class="table-cell"></td>
-                        <td ng-bind="row.messageSplits[3]" ng-if="row.messageSplits.length == 4" class="table-cell"></td>
-                    </tr>
-                </tbody>
-            </table>
+                    <a class="btn btn-default btn-sm" ng-click="dnsmasq.clearData()" title="Clear data"><span class="glyphicon glyphicon-erase" aria-hidden="true"></span></a>
+                    <a class="btn btn-default btn-sm" ng-click="dnsmasq.dataOptions.pause = !dnsmasq.dataOptions.pause" title="Pause the program so incoming data will be skipped"><span class="glyphicon" ng-class="dnsmasq.dataOptions.pause ? 'glyphicon-play' : 'glyphicon-pause'" aria-hidden="true"></span></a>
+                    <a class="btn btn-default btn-sm" ng-click="dnsmasq.dataOptions.settings = !dnsmasq.dataOptions.settings" title="Show the settings"><span class="glyphicon glyphicon-cog" aria-hidden="true"></span></a>
+                    <small>Uptime: <span title="{{dnsmasq.startTime}}" am-time-ago="dnsmasq.startTime"></span></small>
+                </div>
+            </div>
+
+            <div class="row" ng-if="dnsmasq.dataOptions.settings">
+                <div class="col-xs-12">
+                    <fieldset>
+                        <legend><span class="glyphicon glyphicon-cog" aria-hidden="true"></span> Settings</legend>
+                        <div class="col-xs-12 col-md-6">
+                            <table class="table table-condensed table-bordered">
+                                <caption>
+                                    Ignored Clients
+                                    <input type="text" ng-model="dnsmasq.ignored.input" />
+                                    <button class="btn btn-default btn-sm" ng-click="dnsmasq.ignored.add()"><i class="glyphicon glyphicon-plus"></i></button>
+                                    <span class="pull-right" ng-bind="dnsmasq.ignored.data.length | number" title="the number of ignored items"></span>
+                                </caption>
+                                <thead>
+                                    <tr class="info"><th>IP Address</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr ng-repeat="node in dnsmasq.ignored.data">
+                                        <td>
+                                            <span ng-bind="node"></span>
+                                            <button class="btn btn-default btn-sm pull-right" ng-click="dnsmasq.ignored.remove(node)"><i class="glyphicon glyphicon-remove"></i></button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <hr />
+
+                            <table class="table table-condensed table-bordered">
+                                <caption>
+                                    Ignored Categories
+                                    <input type="text" ng-model="dnsmasq.categoriesOptions.ignored.input" />
+                                    <button class="btn btn-default btn-sm" ng-click="dnsmasq.categoriesOptions.ignored.add()"><i class="glyphicon glyphicon-plus"></i></button>
+                                    <span class="pull-right" ng-bind="dnsmasq.categoriesOptions.ignored.data.length | number" title="the number of ignored items"></span>
+                                </caption>
+                                <thead>
+                                    <tr class="info"><th>Category</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr ng-repeat="node in dnsmasq.categoriesOptions.ignored.data">
+                                        <td>
+                                            <span ng-bind="node"></span>
+                                            <button class="btn btn-default btn-sm pull-right" ng-click="dnsmasq.categoriesOptions.ignored.remove(node)"><i class="glyphicon glyphicon-remove"></i></button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <hr />
+
+                            <table class="table table-condensed table-bordered" ng-if="!dnsmasq.settings.disable_website_description">
+                                <caption>
+                                    Queue to request website description
+                                    <input type="text" ng-model="dnsmasq.descriptions.input" />
+                                    <button class="btn btn-default btn-sm" ng-click="dnsmasq.descriptions.add()"><i class="glyphicon glyphicon-plus"></i></button>
+                                    <button class="btn btn-default btn-sm" ng-click="dnsmasq.descriptions.clear()" title="Clear the whole list"><i class="glyphicon glyphicon-trash"></i></button>
+                                </caption>
+                                <thead>
+                                    <tr class="info"><th>Domain</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr ng-repeat="request in dnsmasq.descriptions.requests | limitTo: dnsmasq.descriptions.expand.limit : ((dnsmasq.descriptions.expand.page - 1) * dnsmasq.descriptions.expand.limit)">
+                                        <td ng-bind="request"></td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="5">
+                                            <div table-options-template records="dnsmasq.descriptions.requests" options="dnsmasq.descriptions" dnsmasq="dnsmasq"></div>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                        <div class="col-xs-12 col-md-6">
+                            <div>Local Domain Name: <input type="text" ng-model="dnsmasq.settings.DomainName" /></div>
+                            <div>IP Address Resolver Url: <input type="text" ng-model="dnsmasq.settings.HostnameResolveUrl" /></div>
+                            <div title="Maybe disabled to prevent interfering with the DNSMasq result because the web server may use the same DNS server"><input type="checkbox" ng-model="dnsmasq.settings.disable_website_description" />&nbsp;Disable retrieving website description</div>
+                            <div><input type="checkbox" ng-model="dnsmasq.settings.show_raw_data_when_import" />&nbsp;Show raw data when importing log files</div>
+                            <div><input type="checkbox" ng-model="dnsmasq.settings.show_raw_data_dnsmasq_only" />&nbsp;Show only dnsmasq log messages in the raw data table</div>
+                            <div><input type="checkbox" ng-model="dnsmasq.settings.reset_data_when_load_log_files" />&nbsp;Clear current data when importing log files</div>
+                            <div><input type="checkbox" ng-model="dnsmasq.settings.retrieve_saved_data_when_load_log_files" />&nbsp;Retrieve all saved <abbr title="website icons and descriptions">data</abbr> when importing log files</div>
+                            <div title="Usefully to keep only main domains (www.website.com or website.com) instead of the ones automatically visited by a program on the client's device"><input type="checkbox" ng-model="dnsmasq.settings.bare_or_www_only" />&nbsp;Keep bare or WWW domains only</div>
+                        </div>
+                    </fieldset>
+                </div>
+
+                <div class="clearfix"></div>
+
+                <hr />
+            </div>
+
+            <div class="row">
+                <div class="col-xs-12" ng-show="dnsmasq.loading_data">
+                    <h6>
+                        <span class="glyphicon glyphicon-warning-sign"></span>
+                        Loading
+                        <span ng-if="dnsmasq.loading_data_on_server">all icons and descriptions on the server...</span>
+                        <span ng-if="dnsmasq.OldDataFileInfo">
+                            <span ng-bind="dnsmasq.OldDataFileInfo.name" class="text-primary"></span>
+                            <span ng-bind="dnsmasq.OldDataFileInfo.length | formatBytes"></span>
+                        </span>
+                        <span ng-show="dnsmasq.OldDataLoadedCount != dnsmasq.OldDataCount">
+                            <span ng-bind="dnsmasq.OldDataLoadedCount | number"></span>
+                            of
+                            <span ng-bind="dnsmasq.OldDataCount | number"></span>
+                            lines...
+                            <button class="btn btn-default btn-sm" ng-click="dnsmasq.OldDataCancel = true" title="Cancel loading data process">
+                                <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
+                            </button>
+                        </span>
+                    </h6>
+                </div>
+
+                <div class="col-xs-12">
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <table class="table table-condensed table-bordered">
+                                <caption>
+                                    <span toggle-hidden options="dnsmasq.domainsOptions.expand"></span>
+                                    Domains: <span ng-bind="dnsmasq.domains.length | number"></span>
+                                    <span class="pull-right">
+                                        <a class="btn btn-default btn-sm" title="Expand All" ng-click="dnsmasq.domainsOptions.expand.all = !dnsmasq.domainsOptions.expand.all; dnsmasq.setHidden(dnsmasq.domains, !dnsmasq.domainsOptions.expand.all)"><span class="glyphicon" ng-class="dnsmasq.domainsOptions.expand.all ? 'glyphicon-minus' : 'glyphicon-plus'" aria-hidden="true"></span></a>
+                                        <a class="btn btn-default btn-sm" title="Search" ng-click="dnsmasq.domainsOptions.searchShow = !dnsmasq.domainsOptions.searchShow"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
+                                        <input placeholder="search" ng-if="dnsmasq.domainsOptions.searchShow" ng-model="dnsmasq.domainsOptions.search.key" />
+                                    </span>
+                                </caption>
+                                <thead ng-if="!dnsmasq.domainsOptions.expand.hidden">
+                                    <tr class="info">
+                                        <th sort-direction options="dnsmasq.domainsOptions" order-by="key" title="Site"></th>
+                                        <th sort-direction options="dnsmasq.domainsOptions" order-by="categories" title="Categories"></th>
+                                        <th sort-direction options="dnsmasq.domainsOptions" order-by="requestors.length" title="Clients"></th>
+                                        <th sort-direction options="dnsmasq.domainsOptions" order-by="totalRequests" title="Requests"></th>
+                                        <th sort-direction options="dnsmasq.domainsOptions" order-by="lastRequestTime" title="Last Time"></th>
+                                        <th sort-direction options="dnsmasq.domainsOptions" order-by="description.description" title="Last Description" ng-if="!dnsmasq.settings.disable_website_description"></th>
+                                    </tr>
+                                </thead>
+                                <tbody ng-if="!dnsmasq.domainsOptions.expand.hidden">
+                                    <tr ng-repeat-start="domain in dnsmasq.domains | filter:dnsmasq.domainsOptions.search:false | orderBy:dnsmasq.domainsOptions.expand.sort.orderBy:dnsmasq.domainsOptions.expand.sort.orderReverse | limitTo: dnsmasq.domainsOptions.expand.limit : ((dnsmasq.domainsOptions.expand.page - 1) * dnsmasq.domainsOptions.expand.limit)">
+                                        <td>
+                                            <span toggle-hidden options="domain.expand"></span>
+                                            <img ng-if="domain.icon" class="icon" ng-src="{{domain.icon}}" alt="" />
+                                            <span ng-bind="domain.key"></span>
+                                        </td>
+                                        <td class="categories">
+                                            <ul class="list-inline">
+                                                <li ng-repeat="category in domain.categories | orderBy:'name'" ng-class="dnsmasq.categoriesOptions.getClasses(category)" ng-bind="category.name"></li>
+                                            </ul>
+                                        </td>
+                                        <td><span ng-bind="domain.requestors.length | number"></span></td>
+                                        <td><span ng-bind="domain.totalRequests | number" class="update-item value-{{domain.totalRequests}}"></span></td>
+                                        <td>
+                                            <div ng-repeat="record in domain.records | orderBy:'lastRequestTime':true | limitTo:1">
+                                                <span ng-bind="record.lastRequestor.client.hostname ? record.lastRequestor.client.hostname : record.lastRequestor.client.key" title="{{record.lastRequestor.client.key}}"></span>
+                                                <span ng-if="record.subdomain" class="text-primary" ng-bind="record.subdomain" title="{{record.key}}"></span>
+                                                <span title="{{record.lastRequestTime}}" am-time-ago="record.lastRequestTime"></span>
+                                            </div>
+                                        </td>
+                                        <td class="description" ng-if="!dnsmasq.settings.disable_website_description">
+                                            <div ng-if="domain.description" title="{{domain.description.bodyText}}">
+                                                <img ng-if="domain.description.icon" class="icon" ng-src="{{domain.description.icon}}" alt="" />
+                                                <span ng-if="domain.description.subdomain" class="text-primary" ng-bind="domain.description.subdomain" title="{{domain.description.domain}}"></span>
+                                                <span ng-if="domain.description.description || domain.description.title">
+                                                    <small ng-bind-html="domain.description.description ? domain.description.description : domain.description.title | html"></small>
+                                                </span>
+                                            </div>
+                                            <div ng-if="!domain.description && domain.info">
+                                                <img ng-if="domain.icon" class="icon" ng-src="{{domain.icon}}" alt="" />
+                                                <small ng-bind="domain.info | html"></small>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr ng-repeat-end ng-if="!domain.expand.hidden">
+                                        <td colspan="6">
+                                            <div domains-template domains="domain" dnsmasq="dnsmasq"></div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                                <tfoot ng-if="!dnsmasq.domainsOptions.expand.hidden">
+                                    <tr>
+                                        <td colspan="6">
+                                            <div table-options-template records="dnsmasq.domains" options="dnsmasq.domainsOptions" dnsmasq="dnsmasq"></div>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <div class="col-xs-12 col-md-6">
+                            <table class="table table-condensed table-bordered">
+                                <caption>
+                                    <span toggle-hidden options="dnsmasq.resolversOptions.expand"></span>
+                                    Resolvers: <span ng-bind="dnsmasq.resolvers | keylength | number"></span>
+                                    <span class="pull-right">
+                                        <a class="btn btn-default btn-sm" title="Search" ng-click="dnsmasq.resolversOptions.searchShow = !dnsmasq.resolversOptions.searchShow"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
+                                        <input placeholder="search" ng-show="dnsmasq.resolversOptions.searchShow" ng-model="dnsmasq.resolversOptions.search" />
+                                    </span>
+                                </caption>
+                                <thead ng-if="!dnsmasq.resolversOptions.expand.hidden">
+                                    <tr class="info">
+                                        <th sort-direction options="dnsmasq.resolversOptions" order-by="key" title="Resolver"></th>
+                                        <th colspan="2" sort-direction options="dnsmasq.resolversOptions" order-by="totalRequests" title="Requests"></th>
+                                    </tr>
+                                </thead>
+                                <tbody ng-if="!dnsmasq.resolversOptions.expand.hidden">
+                                    <tr ng-repeat="resolver in dnsmasq.resolvers | filter:dnsmasq.resolversOptions.search | orderBy:dnsmasq.resolversOptions.expand.sort.orderBy:dnsmasq.resolversOptions.expand.sort.orderReverse" class="animate-row">
+                                        <td><span ng-bind="resolver.key"></span><span ng-if="resolver.key != resolver.hostname">&nbsp;<span ng-bind="resolver.hostname"></span></span></td>
+                                        <td><span ng-bind="resolver.totalRequests | number" class="update-item value-{{resolver.totalRequests}}"></span></td>
+                                        <td><span ng-bind="(resolver.totalRequests / dnsmasq.resolversOptions.sum.totalRequests) * 100 | number:2"></span>%</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot ng-if="!dnsmasq.resolversOptions.expand.hidden">
+                                    <tr>
+                                        <td align="right">Total:</td>
+                                        <td colspan="2"><span ng-bind="dnsmasq.resolversOptions.sum.totalRequests | number" class="update-item value-{{dnsmasq.resolversOptions.sum.totalRequests}}"></span></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <div class="col-xs-12 col-md-6">
+                            <table class="table table-condensed table-bordered">
+                                <caption>
+                                    <span toggle-hidden options="dnsmasq.categoriesOptions.expand"></span>
+                                    Categories: <span ng-bind="dnsmasq.categories | keylength | number"></span>
+                                    <span class="pull-right">
+                                        <a class="btn btn-default btn-sm" ng-click="dnsmasq.categoriesOptions.loadCategories()" title="Update all categories"><span class="glyphicon glyphicon glyphicon-refresh" aria-hidden="true"></span></a>
+                                    </span>
+                                </caption>
+                                <thead ng-if="!dnsmasq.categoriesOptions.expand.hidden">
+                                    <tr class="info">
+                                        <th sort-direction options="dnsmasq.categoriesOptions" order-by="name" title="Name"></th>
+                                        <th sort-direction options="dnsmasq.categoriesOptions" order-by="size" title="DB Count"></th>
+                                        <th sort-direction options="dnsmasq.categoriesOptions" order-by="records.length" title="Domains"></th>
+                                        <th sort-direction options="dnsmasq.categoriesOptions" order-by="requestors.length" title="Clients"></th>
+                                        <th sort-direction options="dnsmasq.categoriesOptions" order-by="hits" title="Hits"></th>
+                                    </tr>
+                                </thead>
+                                <tbody ng-if="!dnsmasq.categoriesOptions.expand.hidden">
+                                    <tr ng-repeat-start="category in dnsmasq.categories | orderBy:dnsmasq.categoriesOptions.expand.sort.orderBy:dnsmasq.categoriesOptions.expand.sort.orderReverse">
+                                        <td>
+                                            <span toggle-hidden options="category.expand"></span>
+                                            <span ng-class="dnsmasq.categoriesOptions.getClasses(category.name)" ng-bind="category.name" title="{{category.url}}"></span>
+                                        </td>
+                                        <td ng-bind="category.size | number"></td>
+                                        <td ng-bind="category.records.length | number"></td>
+                                        <td ng-bind="category.requestors.length | number"></td>
+                                        <td><span ng-bind="category.hits | number" class="update-item value-{{category.hits}}"></span></td>
+                                    </tr>
+                                    <tr ng-repeat-end ng-if="!category.expand.hidden">
+                                        <td colspan="5">
+                                            <table class="table table-condensed table-bordered">
+                                                <thead>
+                                                    <tr class="info">
+                                                        <th sort-direction options="category" order-by="key" title="Site"></th>
+                                                        <th sort-direction options="category" order-by="requestors.length" title="Clients"></th>
+                                                        <th sort-direction options="category" order-by="records.length" title="Subs"></th>
+                                                        <th sort-direction options="category" order-by="totalRequests" title="Hits"></th>
+                                                        <th sort-direction options="category" order-by="lastRequestTime" title="Last Time"></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr ng-repeat-start="topdomain in category.records | orderBy:category.expand.sort.orderBy:category.expand.sort.orderReverse | limitTo: category.expand.limit:((category.expand.page - 1) * category.expand.limit)">
+                                                        <td>
+                                                            <span toggle-hidden options="topdomain.expand"></span>
+                                                            <img ng-if="topdomain.info.icon || topdomain.info.description.icon" class="icon" ng-src="{{topdomain.info.icon ? topdomain.info.icon : topdomain.info.description.icon}}" alt="" />
+                                                            <span ng-bind="topdomain.key"></span>
+                                                        </td>
+                                                        <td><span ng-bind="topdomain.requestors.length | number" class="update-item value-{{topdomain.requestors.length}}"></span></td>
+                                                        <td><span ng-bind="topdomain.records.length | number" class="update-item value-{{topdomain.records.length}}"></span></td>
+                                                        <td><span ng-bind="topdomain.totalRequests | number" class="update-item value-{{topdomain.totalRequests}}"></span></td>
+                                                        <td><span ng-bind="topdomain.lastRequestor.client.hostname ? topdomain.lastRequestor.client.hostname : topdomain.lastRequestor.client.key"></span>: <span title="{{topdomain.lastRequestTime}}" am-time-ago="topdomain.lastRequestTime"></span></td>
+                                                    </tr>
+                                                    <tr ng-repeat-end ng-if="!topdomain.expand.hidden">
+                                                        <td colspan="5"><div domains-template domains="topdomain" dnsmasq="dnsmasq"></div></td>
+                                                    </tr>
+                                                </tbody>
+                                                <tfoot>
+                                                    <tr>
+                                                        <td colspan="5">
+                                                            <div table-options-template records="category.records" options="category" dnsmasq="dnsmasq"></div>
+                                                        </td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-xs-12">
+                            <table class="table table-condensed table-bordered">
+                                <caption>
+                                    <span toggle-hidden options="dnsmasq.queriesOptions.expand"></span>
+                                    Clients: <span ng-bind="dnsmasq.queries | keylength | number"></span>
+                                    <span class="pull-right">
+                                        <a class="btn btn-default btn-sm" title="Request to resolve the hostnames of the clients" ng-click="dnsmasq.queriesOptions.resolveNames()"><span class="glyphicon glyphicon-refresh" aria-hidden="true"></span></a>
+                                        <a class="btn btn-default btn-sm" title="Expand All" ng-click="dnsmasq.queriesOptions.expand.all = !dnsmasq.queriesOptions.expand.all; dnsmasq.setHidden(dnsmasq.queries, !dnsmasq.queriesOptions.expand.all)"><span class="glyphicon" ng-class="dnsmasq.queriesOptions.expand.all ? 'glyphicon-minus' : 'glyphicon-plus'" aria-hidden="true"></span></a>
+                                        <a class="btn btn-default btn-sm" title="Search" ng-click="dnsmasq.queriesOptions.searchShow = !dnsmasq.queriesOptions.searchShow"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
+                                        <input placeholder="search" ng-show="dnsmasq.queriesOptions.searchShow" ng-model="dnsmasq.queriesOptions.search.key" />
+                                    </span>
+                                </caption>
+                                <thead ng-if="!dnsmasq.queriesOptions.expand.hidden">
+                                    <tr class="info">
+                                        <th sort-direction options="dnsmasq.queriesOptions" order-by="key" title="Node"></th>
+                                        <th sort-direction options="dnsmasq.queriesOptions" order-by="categories" title="Categories"></th>
+                                        <th sort-direction options="dnsmasq.queriesOptions" order-by="totalTopDomains" title="Sites"></th>
+                                        <th sort-direction options="dnsmasq.queriesOptions" order-by="totalDomains" title="Subs"></th>
+                                        <th sort-direction options="dnsmasq.queriesOptions" order-by="totalRequests" title="Requests"></th>
+                                        <th sort-direction options="dnsmasq.queriesOptions" order-by="lastRequestTime" title="Last Time"></th>
+                                    </tr>
+                                </thead>
+                                <tbody ng-if="!dnsmasq.queriesOptions.expand.hidden">
+                                    <tr ng-repeat-start="node in dnsmasq.queries | filter:dnsmasq.queriesOptions.search | orderBy:dnsmasq.queriesOptions.expand.sort.orderBy:dnsmasq.queriesOptions.expand.sort.orderReverse | limitTo: dnsmasq.queriesOptions.expand.limit:((dnsmasq.queriesOptions.expand.page - 1) * dnsmasq.queriesOptions.expand.limit)" class="animate-row">
+                                        <td>
+                                            <span toggle-hidden options="node.expand"></span>
+                                            <span ng-bind="node.key" title="IP Address"></span>
+                                            <div ng-if="node.hostnames.length" ng-repeat-start="hostname in node.hostnames">
+                                                <div ng-bind="hostname.vendor" title="Manufacturer"></div>
+                                                <div ng-bind="hostname.mac" title="MAC Address"></div>
+                                                <div ng-bind="hostname.name" title="Hostname"></div>
+                                            </div>
+                                            <br ng-repeat-end ng-if="!$last" />
+                                        </td>
+                                        <td class="categories">
+                                            <ul class="list-inline">
+                                                <li ng-repeat="category in node.categories | orderBy:'name'" ng-class="dnsmasq.categoriesOptions.getClasses(category)" ng-bind="category.name"></li>
+                                            </ul>
+                                        </td>
+                                        <td><span ng-bind="node.totalTopDomains | number" class="update-item value-{{node.totalTopDomains}}"></span></td>
+                                        <td><span ng-bind="node.totalDomains | number" class="update-item value-{{node.totalDomains}}"></span></td>
+                                        <td><span ng-bind="node.totalRequests | number" class="update-item value-{{node.totalRequests}}"></span></td>
+                                        <td>
+                                            <div ng-repeat="topdomain in node.records | orderBy:'lastRequestTime':true | limitTo:5">
+                                                <img ng-if="topdomain.info.icon || topdomain.info.description.icon" class="icon" ng-src="{{topdomain.info.icon ? topdomain.info.icon : topdomain.info.description.icon}}" alt="" />
+                                                <span class="text-primary" ng-bind="topdomain.key"></span>
+                                                <span title="{{topdomain.lastRequestTime}}" am-time-ago="topdomain.lastRequestTime"></span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr ng-repeat-end ng-if="!node.expand.hidden">
+                                        <td colspan="6">
+                                            <table class="table table-condensed table-bordered">
+                                                <thead>
+                                                    <tr class="warning">
+                                                        <th sort-direction options="node" order-by="key" title="Site"></th>
+                                                        <th sort-direction options="node" order-by="categories" title="Categories"></th>
+                                                        <th sort-direction options="node" order-by="totalDomains" title="Subs"></th>
+                                                        <th sort-direction options="node" order-by="totalRequests" title="Requests"></th>
+                                                        <th sort-direction options="node" order-by="lastRequestTime" title="Last Time"></th>
+                                                        <th sort-direction options="node" order-by="description" title="Last Description" ng-if="!dnsmasq.settings.disable_website_description"></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr ng-repeat-start="topdomain in node.records | filter:dnsmasq.queriesOptions.search | orderBy:node.expand.sort.orderBy:node.expand.sort.orderReverse | limitTo: node.expand.limit:((node.expand.page - 1) * node.expand.limit)">
+                                                        <td>
+                                                            <span toggle-hidden options="topdomain.expand"></span>
+                                                            <img ng-if="topdomain.info.icon || topdomain.info.description.icon" class="icon" ng-src="{{topdomain.info.icon ? topdomain.info.icon : topdomain.info.description.icon}}" alt="" />
+                                                            <span ng-bind="topdomain.key"></span>
+                                                        </td>
+                                                        <td>
+                                                            <ul class="list-inline">
+                                                                <li ng-repeat="category in topdomain.categories | orderBy:'name'" ng-class="dnsmasq.categoriesOptions.getClasses(category)" ng-bind="category.name"></li>
+                                                            </ul>
+                                                        </td>
+                                                        <td><span ng-bind="topdomain.totalDomains | number" class="update-item value-{{topdomain.totalDomains}}"></span></td>
+                                                        <td><span ng-bind="topdomain.totalRequests | number" class="update-item value-{{topdomain.totalRequests}}"></span></td>
+                                                        <td>
+                                                            <div ng-repeat="record in topdomain.records | orderBy:'time':true | limitTo:1">
+                                                                <span ng-if="record.subdomain" class="text-primary" ng-bind="record.subdomain" title="{{record.domain}}"></span>
+                                                                <span title="{{record.time}}" am-time-ago="record.time"></span>
+                                                            </div>
+                                                        </td>
+                                                        <td class="description" ng-if="!dnsmasq.settings.disable_website_description">
+                                                            <div ng-if="topdomain.description" title="{{topdomain.description.bodyText}}">
+                                                                <img ng-if="topdomain.description.icon" class="icon" ng-src="{{topdomain.description.icon}}" alt="" />
+                                                                <span ng-if="topdomain.description.subdomain" class="text-primary" ng-bind="topdomain.description.subdomain" title="{{topdomain.description.domain}}"></span>
+                                                                <span ng-if="topdomain.description.description || topdomain.description.title">
+                                                                    <small ng-bind-html="topdomain.description.description ? topdomain.description.description : topdomain.description.title | html"></small>
+                                                                </span>
+                                                            </div>
+                                                            <div ng-if="!topdomain.description && topdomain.info.info">
+                                                                <img ng-if="topdomain.info.icon" class="icon" ng-src="{{topdomain.info.icon}}" alt="" />
+                                                                <small ng-bind="topdomain.info.info | html"></small>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    <tr ng-repeat-end ng-if="!topdomain.expand.hidden">
+                                                        <td colspan="6">
+                                                            <table class="table table-condensed">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th sort-direction options="topdomain" order-by="domain" title="Domain"></th>
+                                                                        <th sort-direction options="topdomain" order-by="ipaddress" title="IP Address"></th>
+                                                                        <th sort-direction options="topdomain" order-by="resolver" title="Resolver"></th>
+                                                                        <th sort-direction options="topdomain" order-by="category.name" title="Category"></th>
+                                                                        <th sort-direction options="topdomain" order-by="totalRequests" title="Count"></th>
+                                                                        <th sort-direction options="topdomain" order-by="time" title="Last Time"></th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    <tr ng-repeat="query in topdomain.records | orderBy:topdomain.expand.sort.orderBy:topdomain.expand.sort.orderReverse | limitTo: topdomain.expand.limit:((topdomain.expand.page - 1) * topdomain.expand.limit)"
+                                                                        ng-class=" dnsmasq.isNonRoutableRequest(query) ? 'text-muted' : (query.resolver == 'cached' ? 'text-success' : '')">
+                                                                        <td ng-bind="query.subdomain ? query.subdomain : query.domain" title="{{query.domain}}"></td>
+                                                                        <td ng-bind="query.ipaddress"></td>
+                                                                        <td ng-bind="query.resolver"></td>
+                                                                        <td ng-bind="query.category.name"></td>
+                                                                        <td><span ng-bind="query.totalRequests" class="update-item value-{{query.totalRequests}}"></span></td>
+                                                                        <td title="{{query.time}}" am-time-ago="query.time"></td>
+                                                                    </tr>
+                                                                </tbody>
+                                                                <tfoot>
+                                                                    <tr>
+                                                                        <td colspan="6">
+                                                                            <div table-options-template records="topdomain.records" options="topdomain" dnsmasq="dnsmasq"></div>
+                                                                        </td>
+                                                                    </tr>
+                                                                </tfoot>
+                                                            </table>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                                <tfoot>
+                                                    <tr>
+                                                        <td colspan="6">
+                                                            <div table-options-template records="node.records" options="node" dnsmasq="dnsmasq"></div>
+                                                        </td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                                <tfoot ng-if="!dnsmasq.queriesOptions.expand.hidden">
+                                    <tr>
+                                        <td colspan="6">
+                                            <div table-options-template records="dnsmasq.queries" options="dnsmasq.queriesOptions" dnsmasq="dnsmasq"></div>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xs-12">
+                    <table class="table table-condensed table-bordered">
+                        <caption>
+                            <span toggle-hidden options="dnsmasq.dataOptions.expand"></span>
+                            Raw Data:
+                            <span ng-bind="dnsmasq.dataOptions.count | number" title="Total number of processed lines"></span>
+                            <span class="pull-right">
+                                <a class="btn btn-default btn-sm" title="Chart" ng-click="dnsmasq.dataOptions.chart.show = !dnsmasq.dataOptions.chart.show"><span class="glyphicon glyphicon glyphicon-signal" aria-hidden="true"></span></a>
+                                <span ng-if="dnsmasq.dataOptions.chart.show">
+                                    Duration:
+                                    <select ng-change="dnsmasq.dataOptions.chart.element.update({ duration: 0 })"
+                                            ng-model="dnsmasq.dataOptions.chart.element.options.scales.xAxes[0].realtime.duration">
+                                        <option ng-repeat="duration in dnsmasq.dataOptions.chart.durations" value="{{duration.value}}" ng-bind="duration.name"></option>
+                                    </select>
+                                </span>
+                                <a class="btn btn-default btn-sm" title="Search" ng-click="dnsmasq.dataOptions.searchShow = !dnsmasq.dataOptions.searchShow"><span class="glyphicon glyphicon glyphicon-search" aria-hidden="true"></span></a>
+                                <input placeholder="search" ng-if="dnsmasq.dataOptions.searchShow" ng-model="dnsmasq.dataOptions.search" />
+                                Limit:
+                                <select ng-options="limit for limit in dnsmasq.limits"
+                                        ng-model="dnsmasq.dataOptions.expand.limit"
+                                        title="Raw data storage size limit"></select>
+                            </span>
+                            <canvas real-time-data-chart ng-if="dnsmasq.dataOptions.chart.show" style="width: 800px; height: 200px"></canvas>
+                        </caption>
+                        <thead ng-if="!dnsmasq.dataOptions.expand.hidden">
+                            <tr class="info">
+                                <th sort-direction options="dnsmasq.dataOptions" order-by="time" title="Time"></th>
+                                <th sort-direction options="dnsmasq.dataOptions" order-by="logger" title="Logger">Logger</th>
+                                <th colspan="4">Message</th>
+                            </tr>
+                        </thead>
+                        <tbody ng-if="!dnsmasq.dataOptions.expand.hidden">
+                            <tr ng-repeat="row in dnsmasq.data | filter:dnsmasq.dataOptions.search | orderBy:dnsmasq.dataOptions.expand.sort.orderBy:dnsmasq.dataOptions.expand.sort.orderReverse | limitTo: dnsmasq.dataOptions.expand.limit">
+                                <td title="{{row.time}}" am-time-ago="row.time"></td>
+                                <td ng-bind="row.logger"></td>
+                                <td ng-bind="row.messageSplits.length == 4 ? row.messageSplits[0] : row.message" colspan="{{row.messageSplits.length == 4 ? 0 : 4}}"></td>
+                                <td ng-bind="row.messageSplits[1]" ng-if="row.messageSplits.length == 4" class="table-cell"></td>
+                                <td ng-bind="row.messageSplits[2]" ng-if="row.messageSplits.length == 4" class="table-cell"></td>
+                                <td ng-bind="row.messageSplits[3]" ng-if="row.messageSplits.length == 4" class="table-cell"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>

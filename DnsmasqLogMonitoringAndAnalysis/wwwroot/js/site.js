@@ -37,14 +37,14 @@
         };
     }]);
 
-    System.loggedEvent = function (loggedEvent) {
+    System.loggedEvent = function (loggedEvent, source) {
         if (typeof loggedEvent === 'undefined') {
             return;
         }
 
         // convert it to an object if it is a string
         if (typeof loggedEvent === 'string') {
-            loggedEvent = { time: new Date(), message: loggedEvent };
+            loggedEvent = { time: new Date(), message: loggedEvent, source: source };
         }
 
         var message = loggedEvent.message;
@@ -52,7 +52,7 @@
         if (typeof message === 'string') {
             // check if it is a dnsmasq log and trigger the event if it is
             if (message.substring(0, 50).indexOf('dnsmasq') > 0) {
-                $(document).trigger("dnsmasq", [message, loggedEvent.hidden]);
+                $(document).trigger("dnsmasq", [message, loggedEvent]);
                 return;
             }
         }
