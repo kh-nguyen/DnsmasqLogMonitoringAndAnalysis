@@ -43,7 +43,11 @@
             limits: [5, 10, 20, 50, 100, 200, 500, 1000]
         };
 
-        $scope.selectedSourceIndex = 0;
+        $scope.activeTabIndex = 0;
+        $scope.setActiveTab = function (tabIndex) {
+            $scope.activeTabIndex = tabIndex;
+        };
+
         $scope.sources = [createDnsmasq(dnsmasqBase)];
 
         $(document).on("dnsmasq", function (event, line, loggedEvent) {
@@ -148,7 +152,7 @@
                 categoriesOptions: {
                     data: {},
                     ignored: $.extend({
-                        data: [] // categories to be ignored
+                        data: ['Adware', 'Advertising'] // categories to be ignored
                     }, abstractIgnore),
                     expand: { hidden: true, sort: { orderBy: 'name', orderReverse: false } },
                     resetCounter: function () {

@@ -1,9 +1,9 @@
 ﻿<div class="content-wrapper container-fluid dnsmasq">
     <ul class="nav nav-tabs" role="tablist" ng-show="sources.length > 1">
-        <li role="presentation" ng-repeat="dnsmasq in sources" ng-class="selectedSourceIndex == $index ? 'active' : ''"><a href="#dnsmasq-{{$index}}" aria-controls="dnsmasq-{{$index}}" role="tab" data-toggle="tab" ng-bind="dnsmasq.sourceName"></a></li>
+        <li role="presentation" ng-repeat="dnsmasq in sources | orderBy:'sourceName'" ng-click="setActiveTab($index)" ng-class="$index == activeTabIndex  ? 'active' : ''"><a href="#dnsmasq-{{dnsmasq.sourceName}}" aria-controls="dnsmasq-{{dnsmasq.sourceName}}" role="tab" data-toggle="tab" ng-bind="dnsmasq.sourceName"></a></li>
     </ul>
     <div class="tab-content">
-        <div role="tabpanel" class="tab-pane" ng-class="selectedSourceIndex == $index ? 'active' : ''" id="dnsmasq-{{$index}}" ng-repeat="dnsmasq in sources">
+        <div role="tabpanel" class="tab-pane" ng-class="$index == activeTabIndex ? 'active' : ''" id="dnsmasq-{{dnsmasq.sourceName}}" ng-repeat="dnsmasq in sources | orderBy:'sourceName'">
             <div class="h3">
                 <span ng-if="dnsmasq.title"><span ng-bind="dnsmasq.title"></span>: <span ng-bind="dnsmasq.settings.NetworkPort" title="The listening network port"></span></span>
                 <mark ng-if="dnsmasq.dataOptions.pause"> pausing...</mark>
