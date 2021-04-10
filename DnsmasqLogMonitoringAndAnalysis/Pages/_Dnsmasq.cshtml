@@ -358,10 +358,11 @@
                                         <td>
                                             <span toggle-hidden options="node.expand"></span>
                                             <span ng-bind="node.key" title="IP Address"></span>
+                                            <div ng-if="node.resolvingHostname" class="text-info"><i class="fa fa-spinner fa-spin"></i> Resolving hostname...</div>
                                             <div ng-if="node.hostnames.length" ng-repeat-start="hostname in node.hostnames">
-                                                <div ng-bind="hostname.vendor" title="Manufacturer"></div>
-                                                <div ng-bind="hostname.mac" title="MAC Address"></div>
-                                                <div ng-bind="hostname.name" title="Hostname"></div>
+                                                <div ng-bind="hostname.vendor" title="Manufacturer" ng-show="hostname.vendor"></div>
+                                                <div ng-bind="hostname.mac" title="MAC Address" ng-show="hostname.mac"></div>
+                                                <div ng-bind="hostname.name" title="Hostname" ng-show="hostname.name"></div>
                                             </div>
                                             <br ng-repeat-end ng-if="!$last" />
                                         </td>

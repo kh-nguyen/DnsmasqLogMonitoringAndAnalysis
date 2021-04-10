@@ -344,7 +344,8 @@
                 },
                 queries: [],
                 queriesOptions: {
-                    expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 50 }
+                    expand: { hidden: true, sort: { orderBy: 'lastRequestTime', orderReverse: true }, limit: 50 },
+                    resolveNames: refreshClientHostnames
                 },
                 resolvers: [],
                 resolversOptions: {
@@ -1056,12 +1057,29 @@
             // query for the device's vendor information and it will process once per second
             setInterval(processVendorInfo, 1000);
 
+            // refresh client's hostname every 60 minutes for any updates
+            setInterval(refreshClientHostnames, 60 * 60 * 1000)
+
             // load old data if any
             $timeout(processSavedData);
 
             return dnsmasq;
 
-            function networkResolve(ipAddress, storageObject) {
+            function networkResolve(ipAddress, storageObject, forceToResolve) {
+                var requestsQueue = ipAddress;
+
+                if ($.isArray(requestsQueue)) {
+                    if (requestsQueue.length <= 0) {
+                        return;
+                    }
+
+                    var request = requestsQueue.pop();
+
+                    ipAddress = request.ipAddress;
+                    storageObject = request.storageObject;
+                    forceToResolve = request.forceToResolve;
+                }
+
                 ipAddress = $.trim(ipAddress);
 
                 if (!isIP(ipAddress)) {
@@ -1075,7 +1093,10 @@
                     return;
                 }
 
-                if (typeof hostname === 'undefined' || isIP(hostname)) {
+                if (typeof hostname === 'undefined' || isIP(hostname) || forceToResolve) {
+                    // start the loading indicator
+                    $timeout(function () { storageObject.resolvingHostname = true; });
+
                     var queue = [];
                     dnsmasq.hostnames[ipAddress] = queue;
                     queue.push(storageObject);
@@ -1095,12 +1116,23 @@
                                 });
                             });
                         }
+
+                        if ($.isArray(requestsQueue)) {
+                            networkResolve(requestsQueue);
+                        }
+                    }).always(function () {
+                        // stop the loading indicator when done
+                        $timeout(function () { storageObject.resolvingHostname = false; });
                     });
                 }
 
                 assignHostname(storageObject, hostname);
 
                 function assignHostname(client, hostname) {
+                    if (typeof hostname === 'undefined' || isIP(hostname)) {
+                        return;
+                    }
+
                     client.hostname = hostname;
 
                     if (typeof client.hostnames === 'undefined') {
@@ -1118,6 +1150,16 @@
                     return false;
                 }
                 return ipaddress.split('.').length === 4;
+            }
+
+            function refreshClientHostnames() {
+                var queue = [];
+
+                $.each(dnsmasq.queries, function (index, client) {
+                    queue.push({ ipAddress: client.key, storageObject: client, forceToResolve: true });
+                });
+
+                networkResolve(queue);
             }
 
             function processVendorInfo() {
