@@ -2,10 +2,13 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace DnsmasqLogMonitoringAndAnalysis.Controllers
@@ -14,11 +17,11 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
     [ApiController]
     public class ResolveController : ControllerBase
     {
-        private readonly LogMessageRelay logMessageRelay;
+        private readonly LogMessageRelay _logMessageRelay;
 
         public ResolveController(LogMessageRelay logMessageRelay)
         {
-            this.logMessageRelay = logMessageRelay;
+            _logMessageRelay = logMessageRelay;
         }
 
         [HttpGet("{ipAddress}")]
@@ -31,20 +34,53 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                 hostname = (await Dns.GetHostEntryAsync(hostIPAddress)).HostName;
 
                 if (!string.IsNullOrEmpty(hostname) && hostname != ipAddress) {
-                    LogMessageRelay.StoreHostname(ipAddress, hostname);
+                    await LogMessageRelay.StoreHostname(ipAddress, hostname);
                 }
             }
             catch (Exception ex) {
-                logMessageRelay.SendMessage($"{ipAddress} => {ex.Message}");
+                _logMessageRelay.SendMessage($"ERROR: {ipAddress} => {ex.Message}");
             }
 
             return Content(string.IsNullOrEmpty(hostname) ? ipAddress : hostname);
         }
 
         [HttpPost("{ipAddress}")]
-        public void Hostname(string ipAddress, [FromForm] string hostname)
+        public async Task Hostname(string ipAddress, [FromForm] string hostname)
         {
-            LogMessageRelay.StoreHostname(ipAddress, hostname);
+            await LogMessageRelay.StoreHostname(ipAddress, hostname);
+        }
+
+        public async Task<ActionResult> GetAllMacAddressesAndIpPairs()
+        {
+            try {
+                string cmdOutput = string.Empty;
+
+                using (Process pProcess = new()) {
+                    pProcess.StartInfo.FileName = "arp";
+                    pProcess.StartInfo.Arguments = "-a ";
+                    pProcess.StartInfo.UseShellExecute = false;
+                    pProcess.StartInfo.RedirectStandardOutput = true;
+                    pProcess.StartInfo.CreateNoWindow = true;
+                    pProcess.Start();
+                    cmdOutput = await pProcess.StandardOutput.ReadToEndAsync();
+                }
+
+                List<object> macIpPairs = new();
+                string pattern = @"(?<ip>([0-9]{1,3}\.?){4})\s*(?<mac>([a-f0-9]{2}-?){6})";
+
+                foreach (Match m in Regex.Matches(cmdOutput, pattern, RegexOptions.IgnoreCase)) {
+                    macIpPairs.Add(new {
+                        macAddress = m.Groups["mac"].Value.Replace("-", ":"),
+                        ipAddress = m.Groups["ip"].Value
+                    });
+                }
+
+                return Ok(macIpPairs);
+            } catch (Exception ex) {
+                _logMessageRelay.SendMessage($"ERROR: GetMacAddresses => {ex.Message}");
+            }
+
+            return Content(null);
         }
 
         public async Task<ActionResult> Description([FromQuery] DescriptionRequest descriptionRequest)
@@ -76,31 +112,10 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                 return await Description(new Uri(descriptionRequest.url), descriptionRequest);
             }
             catch (Exception ex) {
-                logMessageRelay.SendMessage($"{descriptionRequest.domain} => {ex.Message}");
+                _logMessageRelay.SendMessage($"ERROR: {descriptionRequest.domain} => {ex.Message}");
             }
 
             return Content(null);
-        }
-
-        private HttpWebRequest GetHttpWebRequest(Uri uri, DescriptionRequest descriptionRequest)
-        {
-            bool hasIpAddress = uri.Host == descriptionRequest.domain;
-
-            // Note: may leak DNS requests if the domain name in the
-            // uri is not the same in the descriptionRequest
-            if (hasIpAddress)
-                uri = new UriBuilder(uri) { Host = descriptionRequest.ipAddress }.Uri;
-
-            var request = (HttpWebRequest)WebRequest.Create(uri);
-            request.CookieContainer = new CookieContainer();
-            request.ContentType = "text/html; charset=utf-8";
-            request.Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3";
-            request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36";
-
-            if (hasIpAddress)
-                request.Host = descriptionRequest.domain;
-
-            return request;
         }
 
         private async Task<ActionResult> Description(Uri uri, DescriptionRequest descriptionRequest)
@@ -123,7 +138,7 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                 }
             }
             catch (WebException we) {
-                logMessageRelay.SendMessage($"{descriptionRequest.domain} => {we.Message}");
+                _logMessageRelay.SendMessage($"{descriptionRequest.domain} => {we.Message}");
 
                 if (we.Response == null)
                     throw;
@@ -143,34 +158,6 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                 return Content(null);
 
             return await Description(document, descriptionRequest);
-        }
-
-        private string GetRedirectUrl(WebException we)
-        {
-            var response = ((HttpWebResponse)we.Response);
-            var statusCode = response.StatusCode;
-
-            // handle web redirect where the redirected url is stored in the headers
-            if ((int)statusCode >= 300 && (int)statusCode <= 399) {
-                var strLocation = response.Headers["Location"];
-
-                if (string.IsNullOrEmpty(strLocation))
-                    throw we;
-
-                return strLocation;
-            }
-
-            return null;
-        }
-
-        private Encoding GetEncoding(HttpWebResponse response)
-        {
-            try {
-                return Encoding.GetEncoding(response.CharacterSet);
-            }
-            catch (Exception) { }
-
-            return Encoding.UTF8;
         }
 
         private async Task<ActionResult> Description(HtmlDocument document, DescriptionRequest descriptionRequest)
@@ -226,12 +213,61 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
             }
 
             if (!string.IsNullOrEmpty(result.description)) {
-                LogMessageRelay.StoreDescription(descriptionRequest.domain, result.description);
+                await LogMessageRelay.StoreDescription(descriptionRequest.domain, result.description);
             }
 
             result.bodyText = document.DocumentNode.SelectSingleNode("//body").ToPlainText();
 
             return new JsonResult(result);
+        }
+
+        private static HttpWebRequest GetHttpWebRequest(Uri uri, DescriptionRequest descriptionRequest)
+        {
+            bool hasIpAddress = uri.Host == descriptionRequest.domain;
+
+            // Note: may leak DNS requests if the domain name in the
+            // uri is not the same in the descriptionRequest
+            if (hasIpAddress)
+                uri = new UriBuilder(uri) { Host = descriptionRequest.ipAddress }.Uri;
+
+            var request = (HttpWebRequest)WebRequest.Create(uri);
+            request.CookieContainer = new CookieContainer();
+            request.ContentType = "text/html; charset=utf-8";
+            request.Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3";
+            request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36";
+
+            if (hasIpAddress)
+                request.Host = descriptionRequest.domain;
+
+            return request;
+        }
+
+        private static string GetRedirectUrl(WebException we)
+        {
+            var response = ((HttpWebResponse)we.Response);
+            var statusCode = response.StatusCode;
+
+            // handle web redirect where the redirected url is stored in the headers
+            if ((int)statusCode >= 300 && (int)statusCode <= 399) {
+                var strLocation = response.Headers["Location"];
+
+                if (string.IsNullOrEmpty(strLocation))
+                    throw we;
+
+                return strLocation;
+            }
+
+            return null;
+        }
+
+        private static Encoding GetEncoding(HttpWebResponse response)
+        {
+            try {
+                return Encoding.GetEncoding(response.CharacterSet);
+            }
+            catch (Exception) { /* ignore errors */ }
+
+            return Encoding.UTF8;
         }
 
         private async Task<string> DownloadIcon(Uri uri, DescriptionRequest descriptionRequest)
@@ -251,7 +287,7 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
 
                     if (ms.Length > 1) {
                         var bytes = ms.ToArray();
-                        LogMessageRelay.StoreIcon(descriptionRequest.domain, response.ContentType, bytes);
+                        await LogMessageRelay.StoreIcon(descriptionRequest.domain, response.ContentType, bytes);
                         var icon = string.Format("data:{0};base64,{1}",
                             response.ContentType, Convert.ToBase64String(bytes));
                         return icon;
@@ -259,7 +295,7 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                 }
             }
             catch (WebException we) {
-                logMessageRelay.SendMessage($"{uri} => {we.Message}");
+                _logMessageRelay.SendMessage($"{uri} => {we.Message}");
 
                 if (we.Response == null)
                     throw;
@@ -284,11 +320,11 @@ namespace DnsmasqLogMonitoringAndAnalysis.Controllers
                 using var stream = client.OpenRead(string.Format("https://api.macvendors.com/{0}", mac));
                 using var textReader = new StreamReader(stream, Encoding.UTF8, true);
                 var vendor = await textReader.ReadToEndAsync();
-                LogMessageRelay.StoreVendor(mac, vendor);
+                await LogMessageRelay.StoreVendor(mac, vendor);
                 return Content(vendor);
             }
             catch (Exception ex) {
-                logMessageRelay.SendMessage($"{mac} => {ex.Message}");
+                _logMessageRelay.SendMessage($"ERROR: {mac} => {ex.Message}");
             }
 
             return Content(null);

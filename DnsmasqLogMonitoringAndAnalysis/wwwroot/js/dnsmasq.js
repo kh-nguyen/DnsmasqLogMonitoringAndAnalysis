@@ -90,6 +90,7 @@
                     data: ['0.0.0.0'] // network nodes to be ignored
                 }, abstractIgnore),
                 ipAddresses: {},
+                macAddresses: {},
                 hostnames: {}, // resolved hostnames cache
                 vendors: {
                     requests: []
@@ -874,22 +875,7 @@
                             var client = dnsmasq.queries.find(function (x) { return x.key === ip; });
                             var hostnameObj = null; // will be assigned if client exists
 
-                            if (typeof client !== 'undefined') {
-                                if (typeof client.hostnames === 'undefined') {
-                                    client.hostnames = [];
-                                }
-                                hostnameObj = client.hostnames.find(function (x) {
-                                    var nameLowerCase = typeof x.name === 'string' ? x.name.toLowerCase() : x.name;
-                                    var hostnameLowerCase = typeof hostname === 'string' ? hostname.toLowerCase() : hostname;
-                                    return nameLowerCase === hostnameLowerCase || x.mac === mac;
-                                });
-                                if (typeof hostnameObj === 'undefined') {
-                                    hostnameObj = { mac: mac, name: hostname };
-                                    client.hostnames.push(hostnameObj);
-                                }
-                                hostnameObj.mac = mac;
-                                hostnameObj.time = timestamp;
-                            }
+                            updateClientInfo(client, mac, hostname, timestamp);
 
                             if (typeof hostname !== 'undefined' && hostname.length) {
                                 if (typeof client !== 'undefined') {
@@ -904,23 +890,7 @@
                                 }
                             }
 
-                            if (typeof mac !== 'undefined' && mac.length) {
-                                var vendor = dnsmasq.vendors[mac];
-                                var hostnameExists = hostnameObj && typeof hostnameObj !== 'undefined';
-
-                                if ($.isArray(vendor) && hostnameExists) {
-                                    vendor.push(hostnameObj);
-                                } else if (typeof vendor === 'undefined') {
-                                    var queue = [];
-                                    if (hostnameExists) {
-                                        queue.push(hostnameObj);
-                                    }
-                                    dnsmasq.vendors[mac] = queue;
-                                    dnsmasq.vendors.requests.push(mac);
-                                } else if (hostnameExists) {
-                                    hostnameObj.vendor = vendor;
-                                }
-                            }
+                            requestVendorInfo(mac, hostnameObj);
                         }
 
                         return;
@@ -1087,31 +1057,26 @@
                 }
 
                 var hostname = dnsmasq.hostnames[ipAddress];
+                var macAddress = dnsmasq.macAddresses[ipAddress];
 
                 if ($.isArray(hostname)) {
-                    hostname.push(storageObject);
-                    return;
-                }
-
-                if (typeof hostname === 'undefined' || isIP(hostname) || forceToResolve) {
+                    if (hostname.indexOf(storageObject) < 0) {
+                        hostname.push(storageObject);
+                    }
+                } else if (typeof hostname === 'undefined' || isIP(hostname) || forceToResolve) {
                     // start the loading indicator
                     $timeout(function () { storageObject.resolvingHostname = true; });
 
-                    var queue = [];
-                    dnsmasq.hostnames[ipAddress] = queue;
-                    queue.push(storageObject);
+                    var hostnamesQueue = [];
+                    dnsmasq.hostnames[ipAddress] = hostnamesQueue;
+                    hostnamesQueue.push(storageObject);
 
                     $.get(dnsmasq.settings.HostnameResolveUrl + '/' + ipAddress, function (data) {
-                        // remove the domain name at the end of the hostname
-                        if (data !== null && data.endsWith(dnsmasq.settings.DomainName)) {
-                            data = data.substring(0, data.length - dnsmasq.settings.DomainName.length - 1);
-                        }
-
                         dnsmasq.hostnames[ipAddress] = data;
 
                         if (data !== ipAddress && data.length) {
                             $scope.$apply(function () {
-                                $.each(queue, function (index, obj) {
+                                $.each(hostnamesQueue, function (index, obj) {
                                     assignHostname(obj, data);
                                 });
                             });
@@ -1122,16 +1087,64 @@
                         }
                     }).always(function () {
                         // stop the loading indicator when done
-                        $timeout(function () { storageObject.resolvingHostname = false; });
+                        $timeout(function () { storageObject.resolvingHostname = false; }, 100);
                     });
+
+                    assignHostname(storageObject, hostname);
                 }
 
-                assignHostname(storageObject, hostname);
+                if (macAddress === null || typeof macAddress === 'undefined') {
+                    var macAddressesQueue = [];
+                    dnsmasq.macAddresses[ipAddress] = macAddressesQueue;
+                    macAddressesQueue.push(storageObject);
+
+                    if (dnsmasq.settings.GetAllMacAddressesAndIpPairsUrl !== null) {
+                        var url = dnsmasq.settings.GetAllMacAddressesAndIpPairsUrl;
+                        dnsmasq.settings.GetAllMacAddressesAndIpPairsUrl = null;
+
+                        $.get(url, function (data) {
+                            $.each(data, function (index, macIpPair) {
+                                macAddressesQueue = dnsmasq.macAddresses[macIpPair.ipAddress];
+
+                                if ($.isArray(macAddressesQueue)) {
+                                    $.each(macAddressesQueue, function (index, storageObject) {
+                                        assignMacAddress(storageObject, macIpPair.macAddress);
+                                        requestVendorInfo(storageObject.mac, storageObject);
+                                    });
+                                }
+
+                                dnsmasq.macAddresses[macIpPair.ipAddress] = macIpPair.macAddress;
+                            });
+                        }).always(function () {
+                            dnsmasq.settings.GetAllMacAddressesAndIpPairsUrl = url;
+
+                            if ($.isArray(dnsmasq.macAddresses[ipAddress])) {
+                                dnsmasq.macAddresses[ipAddress] = null;
+                            }
+                        });
+                    }
+                } else if (typeof macAddress === 'string') {
+                    assignMacAddress(storageObject, macAddress);
+                    requestVendorInfo(storageObject.mac, storageObject);
+                } else if ($.isArray(macAddress)) {
+                    if (macAddress.indexOf(storageObject) < 0) {
+                        macAddress.push(storageObject);
+                    }
+                }
 
                 function assignHostname(client, hostname) {
                     if (typeof hostname === 'undefined' || isIP(hostname)) {
                         return;
                     }
+
+                    var domainNames = ['local', 'localdomain', dnsmasq.settings.DomainName];
+
+                    // remove the domain name at the end of the hostname
+                    $.each(domainNames, function (index, domainName) {
+                        if (hostname !== null && hostname.endsWith(domainName)) {
+                            hostname = hostname.substring(0, hostname.length - domainName.length - 1);
+                        }
+                    });
 
                     client.hostname = hostname;
 
@@ -1140,7 +1153,31 @@
                     }
                     var obj = client.hostnames.find(function (x) { return x.name === hostname; });
                     if (typeof obj === 'undefined') {
-                        client.hostnames.push({ name: hostname, time: new Date() });
+                        if (client.hostnames.length && typeof client.hostnames[0].name === 'undefined') {
+                            client.hostnames[0].name = hostname;
+                        } else {
+                            client.hostnames.push({ name: hostname, time: new Date() });
+                        }
+                    }
+                }
+
+                function assignMacAddress(client, mac) {
+                    if (typeof mac === 'undefined') {
+                        return;
+                    }
+
+                    client.mac = mac;
+
+                    if (typeof client.hostnames === 'undefined') {
+                        client.hostnames = [];
+                    }
+                    var obj = client.hostnames.find(function (x) { return x.mac === mac; });
+                    if (typeof obj === 'undefined') {
+                        if (client.hostnames.length && typeof client.hostnames[0].mac === 'undefined') {
+                            client.hostnames[0].mac = mac;
+                        } else {
+                            client.hostnames.push({ mac: mac, time: new Date() });
+                        }
                     }
                 }
             }
@@ -1160,6 +1197,60 @@
                 });
 
                 networkResolve(queue);
+            }
+
+            function updateClientInfo(client, mac, hostname, timestamp) {
+                if (typeof client !== 'undefined') {
+                    if (typeof client.hostnames === 'undefined') {
+                        client.hostnames = [];
+                    }
+                    hostnameObj = client.hostnames.find(function (x) {
+                        var nameLowerCase = typeof x.name === 'string' ? x.name.toLowerCase() : x.name;
+                        var hostnameLowerCase = typeof hostname === 'string' ? hostname.toLowerCase() : hostname;
+                        return nameLowerCase === hostnameLowerCase || x.mac === mac;
+                    });
+                    if (typeof hostnameObj === 'undefined') {
+                        hostnameObj = { mac: mac, name: hostname };
+                        client.hostnames.push(hostnameObj);
+                    }
+                    hostnameObj.mac = mac;
+                    hostnameObj.time = timestamp;
+                }
+            }
+
+            function requestVendorInfo(mac, client) {
+                if (typeof mac !== 'undefined' && mac.length) {
+                    var vendor = dnsmasq.vendors[mac];
+                    var clientExists = client && typeof client !== 'undefined';
+
+                    if ($.isArray(vendor) && client) {
+                        if (vendor.indexOf(client) < 0) {
+                            vendor.push(client);
+                        }
+                    } else if (typeof vendor === 'undefined') {
+                        var queue = [];
+                        if (clientExists) {
+                            queue.push(client);
+                        }
+                        dnsmasq.vendors[mac] = queue;
+                        dnsmasq.vendors.requests.push(mac);
+                    } else if (clientExists) {
+                        assignVendor(client, mac, vendor);
+                    }
+                }
+            }
+
+            function assignVendor(client, mac, vendor) {
+                if (typeof client === 'undefined') {
+                    return;
+                }
+
+                client.vendor = vendor;
+
+                var hostname = client.hostnames.find(function (x) { return x.mac === mac; });
+                if (typeof hostname !== 'undefined') {
+                    hostname.vendor = vendor;
+                }
             }
 
             function processVendorInfo() {
@@ -1187,9 +1278,7 @@
 
                         if (typeof data !== 'undefined') {
                             $.each(queue, function (index, client) {
-                                if (client !== null) {
-                                    client.vendor = data;
-                                }
+                                assignVendor(client, mac, data);
                             });
                         }
                     }

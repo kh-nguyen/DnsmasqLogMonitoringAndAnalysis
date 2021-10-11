@@ -7,6 +7,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -20,7 +21,9 @@ namespace DnsmasqLogMonitoringAndAnalysis
 {
     public class Startup
     {
-        public static int NetworkPort = 514; // default listen port
+        private static int _networkPort = 514; // default listen port
+
+        public static int NetworkPort => _networkPort;
 
         public Startup(IConfiguration configuration)
         {
@@ -68,8 +71,8 @@ namespace DnsmasqLogMonitoringAndAnalysis
 
             var networkPortPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "port.txt");
             if (File.Exists(networkPortPath))
-                int.TryParse(File.ReadAllText(networkPortPath), out NetworkPort);
-            app.ApplicationServices.GetService<LogMessageRelay>().Listen(NetworkPort);
+                _ = int.TryParse(File.ReadAllText(networkPortPath), out _networkPort);
+            app.ApplicationServices.GetService<LogMessageRelay>().Listen(_networkPort);
         }
     }
 
@@ -125,14 +128,14 @@ namespace DnsmasqLogMonitoringAndAnalysis
             }
         }
 
-        public static Dictionary<string, string> DescriptionsStorage
-            = GetStorage<Dictionary<string, string>>(DescriptionsFilePath);
+        public static ConcurrentDictionary<string, string> DescriptionsStorage { get; set; }
+            = GetStorage<ConcurrentDictionary<string, string>>(DescriptionsFilePath);
 
-        public static Dictionary<string, string> VendorsStorage
-            = GetStorage<Dictionary<string, string>>(VendorsFilePath);
+        public static ConcurrentDictionary<string, string> VendorsStorage { get; set; }
+            = GetStorage<ConcurrentDictionary<string, string>>(VendorsFilePath);
 
-        public static Dictionary<string, string> HostnamesStorage
-            = GetStorage<Dictionary<string, string>>(HostnamesFilePath);
+        public static ConcurrentDictionary<string, string> HostnamesStorage { get; set; }
+            = GetStorage<ConcurrentDictionary<string, string>>(HostnamesFilePath);
 
         public LogMessageRelay(IHubContext<DnsmasqQueriesHub> hubContext)
         {
@@ -202,16 +205,15 @@ namespace DnsmasqLogMonitoringAndAnalysis
             return new string[] { };
         }
 
-        public static void StoreIcon(string domain, string contentType, byte[] data)
+        public static async Task StoreIcon(string domain, string contentType, byte[] data)
         {
             Directory.CreateDirectory(IconsDirPath);
             var extension = GetExtension(contentType);
             var fileName = Path.Combine(IconsDirPath, string.Format("{0}{1}", domain, extension));
             if (File.Exists(fileName)) {
-                if (File.ReadAllBytes(fileName).SequenceEqual(data))
+                if ((await File.ReadAllBytesAsync(fileName)).SequenceEqual(data))
                     return;
-            }
-            else {
+            } else {
                 var sameNames = Directory.EnumerateFiles(IconsDirPath, $"{domain}.*")
                     .Where(x => Path.GetFileNameWithoutExtension(x) == domain);
 
@@ -221,48 +223,46 @@ namespace DnsmasqLogMonitoringAndAnalysis
                         File.Delete(file);
                 }
             }
-            File.WriteAllBytes(fileName, data);
+            await File.WriteAllBytesAsync(fileName, data);
         }
 
-        public static void StoreDescription(string domain, string description)
+        public static async Task StoreDescription(string domain, string description)
         {
             // remove the {{ and }} to avoid in conflict with AngularJS
             description = description.Replace("{{", "[[").Replace("}}", "]]");
-            StoreValue(domain, description, DescriptionsStorage, DescriptionsFilePath);
+            await StoreValue(domain, description, DescriptionsStorage, DescriptionsFilePath);
         }
 
-        public static void StoreVendor(string mac, string description)
+        public static async Task StoreVendor(string mac, string description)
         {
-            StoreValue(mac, description, VendorsStorage, VendorsFilePath);
+            await StoreValue(mac, description, VendorsStorage, VendorsFilePath);
         }
 
-        public static void StoreHostname(string ipAddress, string hostname)
+        public static async Task StoreHostname(string ipAddress, string hostname)
         {
-            StoreValue(ipAddress, hostname, HostnamesStorage, HostnamesFilePath);
+            await StoreValue(ipAddress, hostname, HostnamesStorage, HostnamesFilePath);
         }
 
-        private static void StoreValue(string key, string value, Dictionary<string, string> storage, string filePath)
+        private static async Task StoreValue(string key, string value, ConcurrentDictionary<string, string> storage, string filePath)
         {
             try {
-                lock (storage) {
-                    if (storage.ContainsKey(key)) {
-                        if (storage[key].GetHashCode() != value.GetHashCode()) {
-                            storage[key] = value;
+                if (storage.ContainsKey(key)) {
+                    if (storage[key].GetHashCode() != value.GetHashCode()) {
+                        storage[key] = value;
 
-                            File.WriteAllText(filePath, string.Join(string.Empty,
-                                storage.Select(x => GetLine(new Dictionary<string, string> { { x.Key, x.Value } }))));
-                        }
-
-                        return;
+                        await File.WriteAllTextAsync(filePath, string.Join(string.Empty,
+                            storage.Select(x => GetLine(new Dictionary<string, string> { { x.Key, x.Value } }))));
                     }
 
-                    storage.Add(key, value);
-
-                    var json = GetLine(new Dictionary<string, string> { { key, value } });
-                    File.AppendAllText(filePath, json);
+                    return;
                 }
+
+                storage.TryAdd(key, value);
+
+                var json = GetLine(new Dictionary<string, string> { { key, value } });
+                await File.AppendAllTextAsync(filePath, json);
             }
-            catch (Exception) { }
+            catch (Exception) { /* ignore errors */ }
         }
 
         private static string GetLine(object data)
@@ -323,8 +323,8 @@ namespace DnsmasqLogMonitoringAndAnalysis
 
         public static string GetIcon(string domain)
         {
-            return GetIcon(GetIconFiles().Where(x => Path
-            .GetFileNameWithoutExtension(x.Name) == domain).FirstOrDefault());
+            return GetIcon(GetIconFiles().FirstOrDefault(x => Path
+            .GetFileNameWithoutExtension(x.Name) == domain));
         }
 
         private static T GetStorage<T>(string filePath)
